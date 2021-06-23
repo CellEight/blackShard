@@ -1,0 +1,8 @@
+Plan
+----
+
+Black shard will be an client-server based encrypted note taking application that will let users store text files in a safe full encrypted fashion either on their local machine or on a remote host being run on a server.
+Users will be able to log in with a password to the server using a command line client and then access and decrypt notes using RSA, edit them with their text editor of choice, re-encrypt them and send them back to the server for storage.
+The sever will implement users privileges and permissions to allow users to share some notes while keeping others private
+Data will be stored using a nosql server eg. redis, mongo db.
+The program will initially be written in python before being converted into C or C++
