@@ -48,7 +48,7 @@ class Session():
         pass
 
     def login(self, username):
-        """ Handles the process of user login and verification """
+        """ Handles the process of user login and verification. """
         print(f"[*] Got a login request for account {username}")
         user = self.db.get_user(username) # user is an abstract object yet to be defined
         if not user:
