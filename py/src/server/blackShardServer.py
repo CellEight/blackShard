@@ -1,16 +1,14 @@
-from Crypt import Crypt
-from Network import Network
+from Handler import Handler
 from Config import Config
-
+from Database import Database
 
 def main():
-    # Load configuration
-    # Create instance of Network and configure
-    # Initialize listener
-    # Capture new conncetion
-    # Create new thread to handle connection
-    # Rinse and repeat
-    pass
+    handler = Handler(Config(), Database())
+    while True:
+        if handler.wait_for_client():
+            print("[*] Client Connected.")
+        else:
+            print("[!] Client Connection Failed.")
 
 if __name__ == "__main__":
     main()

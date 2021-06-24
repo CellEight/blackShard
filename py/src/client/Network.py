@@ -25,15 +25,15 @@ class Network:
             self.server_port = None
             self.socket = None
             print(e)
-            print(f"[!] Failed to connect to {server_ip}:{server_port}")
+            print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
             return False
 
     def create_socket(self):
         """ Create a new socket connection to the server """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.server_ip, self.server_port))
-        header = repr(self.socket.recv(1024))
-        print(f"[*] Successfully Connected to {server_ip}:{server_port}")
+        header = self.socket.recv(1024).decode("ascii")
+        print(f"[*] Successfully Connected to {self.server_ip}:{self.server_port}")
         print(header)
         return True
 
@@ -129,8 +129,8 @@ class Network:
             self.socket.sendall(cmd.encode('ascii'))
             if data:
                 self.socket.sendall(data.encode('ascii'))
-            response = repr(self.socket.recv(1024))
-            if self.get_reply():
+            response = self.get_response() 
+            if self.get_response():
                 reply = repr(self.socket.recv(1024)) # May need to increase from 1024 to something larger
                 if response == "yes":
                     return True, reply
@@ -151,11 +151,15 @@ class Network:
                 return False, None
             else:
                 return False
+
     def send_data(self, data):
         pass
 
+    def get_data(self):
+        pass
+
     def get_response(self):
-        response = repr(self.socket.recv(1024)).decode("ascii")
+        response = self.socket.recv(1024).decode("ascii")
         if response == "True":
             return True
         else:

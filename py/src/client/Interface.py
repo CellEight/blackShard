@@ -1,6 +1,6 @@
 # Libraries
 # ---------
-import os
+import os, signal
 from termcolor import colored
 from Crypt import Crypt
 from Network import Network
@@ -153,11 +153,11 @@ class Terminal:
 
     def login(self, user):
         """ Login to the server as the specified user"""
-        # Verify user exists
         if not self.net.socket:
             print(f"[!] You are not yet connected to a server!")
             return False
-        elif not self.net.get_reponse():
+        self.net.send_cmd(f"login {user}")
+        if not self.net.get_response():
             print("[!] User does not exist on this server.")
             return False
         success, cipher = self.net.get_login_cipher()
@@ -248,6 +248,7 @@ class Terminal:
 
     def help(self):
         """ Print help information """
+        # Need to add disconnect
         print("----------Commands----------")
         print("connect <ip>:<port> - establish a connection to remote blackShard server.")
         print("login <user> - attempt to login to connected server as a given user.")

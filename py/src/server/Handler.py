@@ -11,10 +11,11 @@ class Handler():
         self.config = config
         self.db = db
 
-    def create_thread(self, net):
+    def create_thread(self, connection):
         """ Creates session and new thread for a given connection. """
-        session = Session(self.config, net, self.db)
-        thread = threading.Thread(target=session_thread, args=(session,))        
+        session = Session(self.config, connection, self.db)
+        thread = threading.Thread(target=session_thread, args=(session,), daemon=True)        
+        thread.start()
 
     def wait_for_client(self):
         """ Creates a network object which listens for an incoming connection 
@@ -22,14 +23,18 @@ class Handler():
         # This is not an optimal solution as issues could arise from multiple clients
         # attempting simultaneous connection. Could it be handled by altering client code
         # so that it reattempts connection until successful?
-        net = Network(config)
-        if net.listen_for_client():
-            return self.create_thread(net)
-        else:
-            return False
+        net = Network(self.config)
+        while True:
+            connection = net.listen_for_client()
+            if connection:
+                self.create_thread(connection)
+            else:
+                print("[!] Connection was Null? Something funky is going on.")
         
     
 def session_thread(session):
+    print("[*] Session thread created.")
+    result = True
     while result:
        result = session.listen_for_cmd()
-
+    print("[*] Session thread destroyed.")

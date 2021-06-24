@@ -2,11 +2,10 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import binascii
 import pickle
-from Util import choice
 
 class Crypt():
     """ Crypt handles all application layer encryption for blackShard. """
-    def __init__(self, password, key_db_location=None):
+    def __init__(self, key_db_location=None):
         self.current_key = None
         self.key_len = 4096
 

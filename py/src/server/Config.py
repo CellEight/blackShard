@@ -6,4 +6,4 @@ class Config():
     def load_config(self):
         """ Open configuration file, parse and set variables """
         # Will write code later, just hard coding variables for now
-        pass
+        self.header = "Welcome to my server full of wholesome pastes."
