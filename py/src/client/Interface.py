@@ -6,9 +6,9 @@ from Crypt import Crypt
 from Network import Network
 from Config import Config
 
-crypto = Crypt('nopasswordyet')
 
-
+# This class is called terminal rather than interface as I intend to add a second class to handel
+# the use of the application directly from the unix command line
 class Terminal:
     """ Provides methods that provide command line functionality to let the user 
     load and run additional modules and provides the interface to let them interface
@@ -16,6 +16,7 @@ class Terminal:
     def __init__(self, motd=True):
         self.net = Network()
         self.config = Config()
+        self.crypto = Crypt('nopasswordyet')
         if motd:
             self.showMotd()
     
@@ -79,7 +80,7 @@ class Terminal:
                     cmd = input(f'blackShard~Anonymous@{self.net.server_ip}-{self.net.pwd}# ')
             else:
                 cmd = input(f'blackShard~# ')
-            self.runCommand(cmd)
+            self.run_command(cmd)
     
     # Add better error and failure handling to all of these methods
 
@@ -91,12 +92,12 @@ class Terminal:
         elif not self.net.note_exists(note_id):
             print(f"[*] No note of this name exist at current location.")
             return False
-        elif not self.net.priv_check(note_id, 'r'):
+        elif not self.net.check_privilages(note_id, 'r'):
             print(f"[*] You lack the privileges required to read this file")
             return False
         response, cipher = self.net.get(note_id)
         if cipher:
-            note = crypto.decrypt(cipher)
+            note = self.crypto.decrypt(cipher)
             with open(f'/tmp/{note_id}.txt', 'w') as f:
                 f.write(note)
             os.system(f"{self.config.text_editor} /tmp/{note_id}.txt")
@@ -110,7 +111,7 @@ class Terminal:
         elif not self.net.note_exists(note_id):
             print(f"[*] No note of this name exist at current location.")
             return False
-        elif not self.net.priv_check(note_id, 'e'):
+        elif not self.net.check_privilages(note_id, 'e'):
             print(f"[*] You lack the privileges required to edit this note.")
             return False
         self.read(note_id)
@@ -129,7 +130,7 @@ class Terminal:
         if not self.net.user:
             print(f"[!] You are not yet logged into a server!") 
             return False
-        elif not self.net.priv_check(note_id, 'c'):
+        elif not self.net.check_privilages(note_id, 'c'):
             print(f"[*] You lack the privileges required to create a file in this location.")
             return False
         elif self.net.note_exists(note_id):
@@ -146,15 +147,14 @@ class Terminal:
         elif not self.net.note_exists(note_id):
             print(f"[*] No note of this name exist at current location.")
             return False
-        elif not self.net.priv_check(note_id, 'd'):
+        elif not self.net.check_privilages(note_id, 'd'):
             print(f"[*] You lack the privileges required to delete this note.")
             return False
         return self.net.delete(note_id)
 
     def login(self, user):
         """ Login to the server as the specified user"""
-        if not self.net.socket:
-            print(f"[!] You are not yet connected to a server!")
+        if not self.is_connected():
             return False
         self.net.send_cmd(f"login {user}")
         if not self.net.get_response():
@@ -174,25 +174,42 @@ class Terminal:
         else:
             print(f"[!] Login Failed.")
             return False
+    
+    def is_connected(self):
+        """ Just checks if a connection to a server has yet been made. """
+        if not self.net.socket:
+            print(f"[!] You are not yet connected to a server!")
+            return False
+        else:
+            return True
+
 
     def register(self, user):
         """ Asks server to create a new account and, if possible, it creates a 
             new key pair and communicates the public key to the server ."""
-        if self.net.priv_check(None, 'g'): # g for reGister, I am deeply sorry
-            if self.crypto.generate_keypair():
-                public_key = crypto.current_key.publickey().exportKey().decode('ascii')
-                if self.net.register(user,public_key):
+        if not self.is_connected():
+            return False
+        if self.net.check_privilages(None, 'g'): # g for reGister, I am deeply sorry
+            if self.crypto.generate_keypair(self.net.server_ip, user):
+                public_key = self.crypto.current_keypair.publickey().exportKey().decode('ascii')
+                if self.net.register(user, public_key):
                     print(f"[*] Registration complete. Welcome to the server {user}.")
                     return True
                 else:
+                    self.crypto.current_key = None
                     print("[!] Registration failed. Try again?")
                     return False
             else:
                 return False
+        else:
+            print("[!] You are not permitted to perform this action.")
+            return False
 
     def unregister(self):
         """ Instructs the server to delete the active user and if success purges 
             their keys from the key database """
+        if not self.is_connected():
+            return False
         if self.net.unregister():
             self.net.user = None
             if self.crypto.delete_keypair(f'{self.net.server_ip}-{user}'):
@@ -204,15 +221,22 @@ class Terminal:
         else:
             print("[!] Failed to delete user from server. Try again or contact Admin.")
 
-    def runCommand(self, cmd):
+    def connect(self,ip_port):
+        """ Silly yes, but I am aesthetically uncomfortable with  run_command calling 
+            functions from the network class"""
+        self.net.connect(ip_port)
+
+    def run_command(self, cmd):
         """ Parses command and performs the specified action or prints error if malformed"""
         cmd = cmd.strip().split(' ')
         if cmd[0] == 'connect' and len(cmd)==2:
-            self.net.connect(cmd[1])
+            self.connect(cmd[1])
         elif cmd[0] == 'login' and len(cmd)==2:
             self.login(cmd[1])
         elif cmd[0] == 'register' and len(cmd)==2:
-            self.net.register(cmd[1])
+            self.register(cmd[1])
+        elif cmd[0] == 'unregister':
+            self.net.unregister()
         elif cmd[0] == 'ls':
             self.net.ls()
         elif cmd[0] == 'cd' and len(cmd)==2:
@@ -225,12 +249,10 @@ class Terminal:
             self.create(cmd[1])
         elif cmd[0] == 'delete' and len(cmd)==2:
             self.delete(cmd[1])
-        elif cmd[0] == 'unregister':
-            self.net.unregister()
         elif cmd[0] == 'import-keys' and len(cmd)==2:
             self.crypto.import_keypair(cmd[1])
         elif cmd[0] == 'list-keys':
-            crypto.list_keypairs()
+            self.crypto.list_keypairs()
         elif cmd[0] == "help":
             # Display help
             self.help()

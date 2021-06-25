@@ -58,9 +58,14 @@ class Network:
     def register(self, user, public_key):
         """ Sends newly generated public key of candidate user to the server 
             and gets confirmation of registration. """
-        if self.send_cmd(f"register {user}", public_key):
-            self.user = user
-            return True
+        if self.send_cmd(f"register {user}"):
+            self.send_data(public_key)
+            if self.get_response():
+                self.user = user
+                return True
+            else:
+                print("[!] Failed to create new user.")
+                return False
         else:
             return False
 
@@ -104,14 +109,14 @@ class Network:
         else:
             print("[!] Failed to change directory.")
 
-    def create_note(self, note_id):
-        return self.send_cmd(f'create {note_id}')
+    def create_note(self, note_name, dir_id):
+        return self.send_cmd(f'create note {note_name} {dir_id}')
 
     def get_note(self, note_id):
-        return self.send_cmd(f'update {note_id}', get_reply = True)
+        return self.send_cmd(f'update {note_id}')
 
     def update_note(self, note_id, cipher):
-        return self.send_cmd(f'update {note_id}', cipher)
+        return self.send_cmd(f'update {note_id}')
 
     def delete_note(self, note_id):
         return self.send_cmd(f'del {note_id}')
@@ -119,44 +124,41 @@ class Network:
     def check_note_exist(self, note_id):
         return self.send_cmd(f'exists note {note_id}')
 
-    def check_priv(self, note_id, operation):
-        return self.send_cmd(f'priv {note_id} {operation}')
+    def check_privilages(self, note_id, operation):
+        """ This function queries the server to confirm that the client has sufficient 
+            privileges to perform the specified operation """
+        # This feature will be implemented later, for now just return True
+        #return self.send_cmd(f'priv {note_id} {operation}')
+        return True
 
-    def send_cmd(self, cmd, data = None, get_reply = False):
-        """ Send a command to the server along with an optional data 
-            and optionally get data from the server"""
+    def send_cmd(self, cmd):
+        """ Send a command to the server and get response confirming validity """
         try:
             self.socket.sendall(cmd.encode('ascii'))
-            if data:
-                self.socket.sendall(data.encode('ascii'))
-            response = self.get_response() 
             if self.get_response():
-                reply = repr(self.socket.recv(1024)) # May need to increase from 1024 to something larger
-                if response == "yes":
-                    return True, reply
-                elif response == "no":
-                    return False, None
-                else:
-                    raise Exception("[!] Error! Received Garbage response form server.")
+                return True
             else:
-                if response == "yes":
-                    return True
-                elif response == "no":
-                    return False
-                else:
-                    raise Exception("[!] Error! Received Garbage response form server.")
+                print("[!] Server reported invalid command.")
+                return False 
         except Exception as e:
             print(e)
-            if get_reply:
-                return False, None
-            else:
-                return False
+            return False
 
     def send_data(self, data):
-        pass
+        """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
+        try:
+            print(data)
+            self.socket.sendall(data.encode('ascii'))
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+#Both of these functions need exception handling as well as debug messages
 
     def get_data(self):
-        pass
+        data = self.socket.recv(16384).decode('ascii')
+        return data
 
     def get_response(self):
         response = self.socket.recv(1024).decode("ascii")

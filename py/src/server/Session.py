@@ -44,11 +44,26 @@ class Session():
         return self.invalid_command()
 
     def invalid_command(self):
-        """ Handles response to the server in the event of gibberish command. """
-        pass
+        """ Handles response to the client in the event of gibberish command. """
+        try:
+            self.connection.send_response(False) 
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def valid_command(self):
+        """ Informs the client that the recived command was indeed valid. """
+        try:
+            self.connection.send_response(True) 
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def login(self, username):
         """ Handles the process of user login and verification. """
+        self.valid_command()
         print(f"[*] Got a login request for account {username}")
         user = self.db.get_user(username) # user is an abstract object yet to be defined
         if not user:
@@ -72,8 +87,13 @@ class Session():
         self.user = None
         return True
 
-    def register(self, user):
-        pass
+    def register(self, username):
+        # add exception hadnling
+        if not self.valid_command():
+            return True
+        public_key = self.connection.get_data()
+        self.connection.send_response(self.db.create_user(username, public_key))
+        return True
 
     def unregister(self):
         pass

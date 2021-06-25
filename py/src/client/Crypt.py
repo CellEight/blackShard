@@ -28,7 +28,7 @@ class Crypt():
         with open(self.key_db_location, 'rb') as key_db_file:
             self.key_db = pickle.load(key_db_file)
         
-    def save_key_db(self,):
+    def save_key_db(self):
         """ Save the current key_db as a serialized pickle object """
         # exception handling needed
         # add some form of encryption
@@ -36,18 +36,18 @@ class Crypt():
             pickle.dump(self.key_db, key_db_file)
 
 
-    def gererate_keypair(self, sever_ip, user): 
+    def generate_keypair(self, server_ip, user): 
         """ Creates a new key pair and returns the new key_id of the generated pair """
         # is the source of entropy here solid?
         keypair = RSA.generate(self.key_len)
         key_id = f'{server_ip}-{user}'
-        if key_id in key_db:
+        if key_id in self.key_db:
             if choice("[~] A key already exists for this user. Overwrite?", {"y", "n"}) == "n":
                 print("[!] Aborting")
                 return False
-        if add_keypair_to_db(key_id,  keypair):
+        if self.add_keypair_to_db(key_id,  keypair):
             print("[*] New keypair generated.")
-            self.load_keypair(key_id)
+            self.load_keypair(server_ip,user)
             return True
         else:
             print("[!] Could not add keypair to db.")
@@ -57,12 +57,12 @@ class Crypt():
         """ Attempts to load the key pair for the specified user on the specified server, 
             returns true if key found and loaded successfully, and false if it is not """
         try:
-            keypair = self.key_db[f'{server_ip}-{user}']
-            print("[*] Key-Pair '{key_id} active.'")
+            keypair = RSA.importKey(self.key_db[f'{server_ip}-{user}'])
+            print(f"[*] Key-Pair {server_ip}-{user} active.")
         except Exception as e:
             # Clean up error handling here
             print("[!] Could not load key. ")
-            print(e.__class__)
+            print(e)
             return False
         self.current_keypair = keypair
         return True
@@ -84,7 +84,7 @@ class Crypt():
     def add_keypair_to_db(self, key_id, key):
         """ Adds a key to the db """
         # add some more error handling
-        self.key_db[key_id] = key
+        self.key_db[key_id] = key.exportKey('PEM').decode('ascii')
         self.save_key_db()
         return True
 
