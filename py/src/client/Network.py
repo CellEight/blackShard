@@ -35,6 +35,23 @@ class Network:
             print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
             return False
 
+    def disconnect(self):
+        """ Coordinate disconnect of the client from the server. """
+        try:
+            # Tell the server we're leaving
+            #self.send_cmd("disconnect")
+            self.socket.close()
+            # Return everything to its default state
+            self.socket = None
+            self.user = None
+            self.pwd = "/"
+            self.server_ip = None
+            self.server_port = None
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
     def create_socket(self):
         """ Create a new socket connection to the server """
         self.socket = self.context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),server_hostname=self.server_ip)
@@ -92,7 +109,12 @@ class Network:
         return self.send_cmd(f'unregister {username}')
 
     def logout(self):
-        return self.send_cmd(f'logout')
+        """ Instruct the server to logout current user. """
+        if self.send_cmd(f'logout'):
+            self.user = None
+            return True
+        else:
+            return False
 
 
     def ls(self):

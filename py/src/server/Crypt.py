@@ -52,7 +52,8 @@ class Crypt():
         # but in the end just brute forced. It was 84 so "hash length"/2 is 42.
         # Go figure.
         # Fuck I hate this brain dead library.
-        chalange =  secrets.randbits(170*8).to_bytes(170,byteorder='big')
+        # Oh and 470 bytes is massive overkill but why the hell not! NSA can suck it ;p
+        chalange =  secrets.token_bytes(470) 
         cipher = self.encrypt_bytes(chalange)
         print(len(cipher))
         return chalange, cipher 
