@@ -82,14 +82,14 @@ class Network:
         else:
             return False
 
-    def unregister(self):
+    def unregister(self, username):
         if not self.socket:
             print("[!] You are not yet connected to a sever!")
             return False
         elif not self.socket:
             print("[!] You are not yet logged into a sever!")
             return False
-        return self.send_cmd(f'unregister')
+        return self.send_cmd(f'unregister {username}')
 
     def logout(self):
         return self.send_cmd(f'logout')

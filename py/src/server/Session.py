@@ -56,7 +56,7 @@ class Session():
             return False
 
     def valid_command(self):
-        """ Informs the client that the recived command was indeed valid. """
+        """ Informs the client that the received command was indeed valid. """
         try:
             self.connection.send_response(True) 
             return True
@@ -69,7 +69,8 @@ class Session():
             is verified using their RSA key pair via a similar technique that used 
             by SSH for user authentication. See this link for an outline of the 
             algorithm https://www.digitalocean.com/community/tutorials/understanding-the-ssh-encryption-and-connection-process#authenticating-the-user-39-s-access-to-the-server"""
-        self.valid_command()
+        if not self.valid_command():
+            return True
         print(f"[*] Got a login request for account {username}")
         user = self.db.get_user(username) # user is an abstract object yet to be defined
         if not user:
@@ -92,6 +93,8 @@ class Session():
             return True 
 
     def logout(self):
+        if not self.valid_command():
+            return True
         print(f"[*] Logging user {self.user['username']} out of the server.")
         self.user = None
         self.connection.send_response(True)
@@ -109,6 +112,8 @@ class Session():
     def unregister(self, username):
         """ Remove the user with the specified username form the database. """
         # May need to add additional code to clean up all the notes they own?
+        if not self.valid_command():
+            return True
         try:
             if self.db.delete_user(username):
                 self.connection.send_response(True)
@@ -125,22 +130,36 @@ class Session():
             return False
 
     def ls(self):
+        if not self.valid_command():
+            return True
         pass
     
     def cd(self, directory):
+        if not self.valid_command():
+            return True
         pass
 
     def create_note(self, note):
+        if not self.valid_command():
+            return True
         pass
 
     def get_note(self, note):
+        if not self.valid_command():
+            return True
         pass
 
     def update_note(self, note):
+        if not self.valid_command():
+            return True
         pass
 
     def delete_note(self, note):
+        if not self.valid_command():
+            return True
         pass
 
     def check_priv(self, obj):
+        if not self.valid_command():
+            return True
         pass

@@ -66,14 +66,14 @@ class Database():
             if directory exists or None if it does not."""
         return self.dir.find_one({"_id":dir_id})
 
-    def delete_user(self, user_id):
+    def delete_user(self, username):
         try:
-            self.users.delete_one(user_id)
-            print(f"[*] Deleted User {user_id}.")
+            self.users.delete_one({'username':username})
+            print(f"[*] Deleted User {username}.")
             return True
         except Exception as e:
             print(e)
-            print(f"[!] Failed to delete user {user_id}.")
+            print(f"[!] Failed to delete user {username}.")
             return False
 
     def delete_note(self, note_id):

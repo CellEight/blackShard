@@ -229,12 +229,13 @@ class Terminal:
             print("[!] You are not permitted to perform this action.")
             return False
 
-    def unregister(self):
+    def unregister(self, username):
         """ Instructs the server to delete the active user and if success purges 
             their keys from the key database """
+        # Add check that the user has the privileges to do this
         if not self.is_connected():
             return False
-        if self.net.unregister():
+        if self.net.unregister(username):
             self.net.user = None
             if self.crypto.delete_keypair(f'{self.net.server_ip}-{user}'):
                 print("[*] User deleted from server and keys purged form key database.")
@@ -255,10 +256,8 @@ class Terminal:
         cmd = cmd.strip().split(' ')
         # refactor these silly if statments
         if len(cmd) == 1:
-            elif cmd[0] == 'logout':
+            if cmd[0] == 'logout':
                 return self.logout()
-            elif cmd[0] == 'unregister':
-                return self.net.unregister()
             elif cmd[0] == 'ls':
                 return self.net.ls()
             elif cmd[0] == 'list-keys':
@@ -279,6 +278,8 @@ class Terminal:
                 return self.login(cmd[1])
             elif cmd[0] == 'register':
                 return self.register(cmd[1])
+            elif cmd[0] == 'unregister':
+                return self.net.unregister(cmd[1])
             elif cmd[0] == 'cd':
                 return self.net.cd(cmd[1])
             elif cmd[0] == 'read':
