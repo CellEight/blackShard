@@ -82,6 +82,22 @@ class Terminal:
                 cmd = input(f'blackShard~# ')
             self.run_command(cmd)
     
+    def is_connected(self):
+        """ Just checks if a connection to a server has yet been made. """
+        if not self.net.socket:
+            print(f"[!] You are not yet connected to a server!")
+            return False
+        else:
+            return True
+
+    def is_logged_in(self):
+        """ Just checks if the client is logged in. """
+        if not self.net.user:
+            print(f"[!] You are not yet logged in!")
+            return False
+        else:
+            return True
+
     # Add better error and failure handling to all of these methods
 
     def read(self, note_id):
@@ -160,29 +176,37 @@ class Terminal:
         if not self.net.get_response():
             print("[!] User does not exist on this server.")
             return False
-        success, cipher = self.net.get_login_cipher()
-        if success:
+        try:
+            cipher = self.net.get_login_cipher(user)
             self.crypto.load_keypair(self.net.server_ip, user)
-            repsonse = self.crypto.decrypt(cipher)
-            if self.net.send_login_reponse(response):
+            response = self.crypto.decrypt_bytes(cipher)
+            if self.net.send_login_response(response):
                 self.net.user = user
                 print(f"[*] Login Successful. Welcome {user}.")
                 return True
             else:
                 print(f"[!] Login Failed. Are you sure you're in the right place son?")
                 return False
-        else:
+        except Exception as e:
+            print(e)
             print(f"[!] Login Failed.")
             return False
     
-    def is_connected(self):
-        """ Just checks if a connection to a server has yet been made. """
-        if not self.net.socket:
-            print(f"[!] You are not yet connected to a server!")
+    def logout(self):
+        """ Logs the user out of the server. """
+        if not self.is_connected():
             return False
-        else:
+        if not self.is_logged_in():
+            return False
+        if self.net.logout():
+            self.net.user == None
+            self.crypto.current_keypair = None
+            print(self.net.user)
+            print("[*] You have been logged out.")
             return True
-
+        else:
+            print("[!] Failed to logout!")
+            return False
 
     def register(self, user):
         """ Asks server to create a new account and, if possible, it creates a 
@@ -224,67 +248,73 @@ class Terminal:
     def connect(self,ip_port):
         """ Silly yes, but I am aesthetically uncomfortable with  run_command calling 
             functions from the network class"""
-        self.net.connect(ip_port)
+        return self.net.connect(ip_port)
 
     def run_command(self, cmd):
         """ Parses command and performs the specified action or prints error if malformed"""
         cmd = cmd.strip().split(' ')
-        if cmd[0] == 'connect' and len(cmd)==2:
-            self.connect(cmd[1])
-        elif cmd[0] == 'login' and len(cmd)==2:
-            self.login(cmd[1])
-        elif cmd[0] == 'register' and len(cmd)==2:
-            self.register(cmd[1])
-        elif cmd[0] == 'unregister':
-            self.net.unregister()
-        elif cmd[0] == 'ls':
-            self.net.ls()
-        elif cmd[0] == 'cd' and len(cmd)==2:
-            self.net.cd(cmd[1])
-        elif cmd[0] == 'read' and len(cmd)==2:
-            self.read(cmd[1])
-        elif cmd[0] == 'edit' and len(cmd)==2:
-            self.edit(cmd[1])
-        elif cmd[0] == 'create' and len(cmd)==2:
-            self.create(cmd[1])
-        elif cmd[0] == 'delete' and len(cmd)==2:
-            self.delete(cmd[1])
-        elif cmd[0] == 'import-keys' and len(cmd)==2:
-            self.crypto.import_keypair(cmd[1])
-        elif cmd[0] == 'list-keys':
-            self.crypto.list_keypairs()
-        elif cmd[0] == "help":
-            # Display help
-            self.help()
-        elif cmd[0] == "motd":
-            # Print banner
-            self.showMotd()
-        elif cmd[0] == "quit":
-            # Exit to command line
-            self.quit()
-        elif len(cmd) == 3 and cmd[0] == "set" and cmd[1] == "remote":
-            # Set the remote host
-            self.setRemoteHost(cmd[2])
-        else:
-            print('[!] Not a valid command! Type "help" for a list of commands')
+        # refactor these silly if statments
+        if len(cmd) == 1:
+            elif cmd[0] == 'logout':
+                return self.logout()
+            elif cmd[0] == 'unregister':
+                return self.net.unregister()
+            elif cmd[0] == 'ls':
+                return self.net.ls()
+            elif cmd[0] == 'list-keys':
+                return self.crypto.list_keypairs()
+            elif cmd[0] == "help":
+                # Display help
+                return self.help()
+            elif cmd[0] == "motd":
+                # Print banner
+                return self.showMotd()
+            elif cmd[0] == "quit":
+                # Exit to command line
+                return self.quit()
+        elif len(cmd) == 2:
+            if cmd[0] == 'connect':
+                return self.connect(cmd[1])
+            elif cmd[0] == 'login':
+                return self.login(cmd[1])
+            elif cmd[0] == 'register':
+                return self.register(cmd[1])
+            elif cmd[0] == 'cd':
+                return self.net.cd(cmd[1])
+            elif cmd[0] == 'read':
+                return self.read(cmd[1])
+            elif cmd[0] == 'edit':
+                return self.edit(cmd[1])
+            elif cmd[0] == 'create':
+                return self.create(cmd[1])
+            elif cmd[0] == 'delete':
+                return self.delete(cmd[1])
+            # will implement later
+            #elif cmd[0] == 'import-keys':
+            #    return self.crypto.import_keypair(cmd[1])
+        elif len(cmd) == 3:
+            pass 
+        print('[!] Not a valid command! Type "help" for a list of commands')
 
     def help(self):
         """ Print help information """
         # Need to add disconnect
         print("----------Commands----------")
         print("connect <ip>:<port> - establish a connection to remote blackShard server.")
+        print("disconnect - disconnect from the current server")
         print("login <user> - attempt to login to connected server as a given user.")
-        print("register <user> - attempt to register a user on connected server.")
+        print("logout - logout of current server.")
+        print("register <user> - attempt to register a user on the connected server.")
+        print("unregister <user> - attempt to delete user from the connected server.")
         print("ls - List contents of current directory on server.")
         print("cd <dir> - Change current directory to specified.")
         print("read <note> - read specified note.")
         print("edit <note> - edit specified note.")
         print("create <note> - create a new note.")
         print("delete <note> - delete specified note.")
-        print("unregister - delete current user from sever.")
-        print("import-keys <path> [<ip> <user>]- import the key pair from file optionally specifying server and user")
+        # will implement later
+        #print("import-keys <path> [<ip> <user>]- import the key pair from file optionally specifying server and user")
         print("list-keys - show a list of saved keys.")
-        print("logout - logout of current server.")
         print("help - Prints this very message to the console.")
         print("motd - Displays the message of the day banner.")
         print("quit - Exits the program.")

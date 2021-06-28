@@ -6,7 +6,7 @@ class Connection():
         self.client_ip = client_ip 
         self.server_ip = server_ip 
         self.server_port = server_port 
-        self.send_data(self.config.header)
+        self.send_str_data(self.config.header)
         print(f"[*] Successfully connected to client at {self.client_ip}")
 
 #Several of these functions need exception handling as well as debug messages
@@ -15,24 +15,30 @@ class Connection():
         """ Listens for a command client and returns it as an ascii string. """
         cmd = self.connection.recv(1024).decode('ascii') #may not be a byte string?
         return cmd
+    
+    def send_str_data(self, data):
+        return self.send_raw_data(data.encode('ascii'))
 
-    def send_data(self, data):
+    def send_raw_data(self, data):
         """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
         try:
-            self.connection.sendall(data.encode('ascii'))
+            self.connection.send(data)
             return True
         except Exception as e:
             print(e)
             return False
 
-    def get_data(self):
-        data = self.connection.recv(16384).decode('ascii')
+    def get_str_data(self):
+        return self.get_raw_data().decode('ascii')
+
+    def get_raw_data(self):
+        data = self.connection.recv(16384)
         print(data)
         return data
 
     def send_response(self, response):
         if response:
-            self.connection.sendall("True".encode('ascii'))
+            self.connection.send("True".encode('ascii'))
         else:
-            self.connection.sendall("False".encode('ascii'))
+            self.connection.send("False".encode('ascii'))
 

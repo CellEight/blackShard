@@ -8,6 +8,7 @@ class Session():
         self.crypto = Crypt()
         self.user = None
 
+
     def listen_for_cmd(self):
         """ Listens for commands from clients and hands them off to be parsed. """
         cmd = self.connection.get_cmd()
@@ -20,8 +21,6 @@ class Session():
         if len(cmd) == 1:
             if cmd[0] == "logout":
                 return self.logout()
-            elif cmd[0] == "unregister":
-                return self.unregister()
             elif cmd[0] == "ls":
                 return self.ls()
         elif len(cmd) == 2:
@@ -29,6 +28,8 @@ class Session():
                 return self.login(cmd[1])
             elif cmd[0] == "register":
                 return self.register(cmd[1])
+            elif cmd[0] == "unregister":
+                return self.unregister(cmd[1])
             elif cmd[0] == "cd":
                 return self.cd(cmd[1])
             elif cmd[0] == "get_note":
@@ -42,6 +43,8 @@ class Session():
             elif cmd[0] == "check_priv":
                 return self.check_priv(cmd[1])
         return self.invalid_command()
+    
+    #implement a disconnect method
 
     def invalid_command(self):
         """ Handles response to the client in the event of gibberish command. """
@@ -62,7 +65,10 @@ class Session():
             return False
 
     def login(self, username):
-        """ Handles the process of user login and verification. """
+        """ Handles the process of user login and verification. The users identify 
+            is verified using their RSA key pair via a similar technique that used 
+            by SSH for user authentication. See this link for an outline of the 
+            algorithm https://www.digitalocean.com/community/tutorials/understanding-the-ssh-encryption-and-connection-process#authenticating-the-user-39-s-access-to-the-server"""
         self.valid_command()
         print(f"[*] Got a login request for account {username}")
         user = self.db.get_user(username) # user is an abstract object yet to be defined
@@ -73,9 +79,11 @@ class Session():
         else:
             self.connection.send_response(True)
         self.crypto.load_user_public_key(user)
-        self.connection.send_data(self.crypto.generate_login_cipher())
-        data = self.connection.get_data()
-        if self.crypto.validate_login_cipher_data(data):
+        challenge, cipher = self.crypto.generate_login_cipher()
+        self.connection.send_raw_data(cipher)
+        data = self.connection.get_raw_data()
+        print(data)
+        if challenge == data:
             self.user = user
             self.connection.send_response(True)
             return True 
@@ -84,19 +92,37 @@ class Session():
             return True 
 
     def logout(self):
+        print(f"[*] Logging user {self.user['username']} out of the server.")
         self.user = None
+        self.connection.send_response(True)
         return True
 
     def register(self, username):
-        # add exception hadnling
+        # add exception handling
         if not self.valid_command():
             return True
-        public_key = self.connection.get_data()
+        public_key = self.connection.get_str_data()
         self.connection.send_response(self.db.create_user(username, public_key))
+        self.user = self.db.get_user(username)
         return True
 
-    def unregister(self):
-        pass
+    def unregister(self, username):
+        """ Remove the user with the specified username form the database. """
+        # May need to add additional code to clean up all the notes they own?
+        try:
+            if self.db.delete_user(username):
+                self.connection.send_response(True)
+                print(f"[*] User {username} has been deleted.")
+                return True
+            else:
+                self.connection.send_response(False)
+                print(f"[!] Could not delete user {username} from the database.")
+                return False
+        except Exception as e:
+            print(e)
+            self.connection.send_response(False)
+            print(f"[!] Could not delete user {username}.")
+            return False
 
     def ls(self):
         pass

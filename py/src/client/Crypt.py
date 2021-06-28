@@ -2,11 +2,12 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import binascii
 import pickle
+from os.path import isfile
 from Util import choice
 
 class Crypt():
     """ Crypt handles all application layer encryption for blackShard. """
-    def __init__(self, password, key_db_location=None):
+    def __init__(self, password, key_db_location="./key_db.pkl"):
         self.current_keypair = None
         self.key_len = 4096
         self.key_db_location = key_db_location 
@@ -15,13 +16,12 @@ class Crypt():
     def create_key_db(self,):
         """ Create a empty key db file """
         self.key_db = {}
-        self.key_db_location = "./key_db.pkl"
         self.save_key_db()
 
     def load_key_db(self, password):
         """ Load the encrypted pickle file containing a serialized python 
             dictionary of 2-tuples of RSA key-pairs and associated sever labled by key id"""
-        if not self.key_db_location:
+        if not isfile(self.key_db_location):
             self.create_key_db()
         # exception handling needed
         # add some form of encryption
@@ -76,10 +76,21 @@ class Crypt():
 
     def decrypt(self, cipher):
         """ Decrypt cipher text using the current RSA keypair """
+        print(cipher)
+        print(len(cipher))
         cipher = cipher.encode('ascii')
         decryptor = PKCS1_OAEP.new(self.current_keypair)
         text = decryptor.decrypt(cipher)
         return text.decode('ascii')
+
+    def decrypt_bytes(self, cipher):
+        """ Decrypt cipher text using the current RSA keypair """
+        print(cipher)
+        print(len(cipher))
+        cipher = cipher
+        decryptor = PKCS1_OAEP.new(self.current_keypair)
+        text = decryptor.decrypt(cipher)
+        return text
 
     def add_keypair_to_db(self, key_id, key):
         """ Adds a key to the db """
