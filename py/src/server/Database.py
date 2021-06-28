@@ -54,17 +54,17 @@ class Database():
     def get_user(self, username):
         """ Queries the database for a given user. Returns user object 
             if user exists or None if they do not. """
-        return self.users.findOne({"username":username})
+        return self.users.find_one({"username":username})
 
     def get_note(self, note_id):
         """ Queries the database for a given note. Returns note dictionary
             if note exists or None if it does not."""
-        return self.notes.findOne({"_id":note_id})
+        return self.notes.find_one({"_id":note_id})
 
     def get_dir(self, dir_id):
         """ Queries the database for a given directory. Returns directory dictionary 
             if directory exists or None if it does not."""
-        return self.dir.findOne({"_id":dir_id})
+        return self.dir.find_one({"_id":dir_id})
 
     def delete_user(self, user_id):
         try:
