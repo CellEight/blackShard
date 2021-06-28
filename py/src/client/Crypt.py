@@ -67,6 +67,9 @@ class Crypt():
         self.current_keypair = keypair
         return True
 
+    # RSA
+    # Change identifiers and refactor encrypt and decrypt 
+
     def encrypt(self, text):
         """ Encrypt text using current RSA keypair """
         text = text.encode('utf-8')

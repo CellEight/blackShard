@@ -77,7 +77,7 @@ class Terminal:
                 if self.net.user:
                     cmd = input(f'blackShard~{self.net.user}@{self.net.server_ip}-{self.net.pwd}# ')
                 else:
-                    cmd = input(f'blackShard~Anonymous@{self.net.server_ip}-{self.net.pwd}# ')
+                    cmd = input(f'blackShard~anonymous@{self.net.server_ip}-{self.net.pwd}# ')
             else:
                 cmd = input(f'blackShard~# ')
             self.run_command(cmd)
@@ -141,12 +141,12 @@ class Terminal:
             print(f"[*] Note '{note_id}' could not be updated.")
             return False 
 
-    def create(self, note_id): 
+    def create_note(self, note_name): 
         """ Create a new note with the specified id and edit. """
         if not self.net.user:
             print(f"[!] You are not yet logged into a server!") 
             return False
-        elif not self.net.check_privilages(note_id, 'c'):
+        elif not self.net.check_privilages(note_name, 'c'):
             print(f"[*] You lack the privileges required to create a file in this location.")
             return False
         elif self.net.note_exists(note_id):
@@ -199,9 +199,7 @@ class Terminal:
         if not self.is_logged_in():
             return False
         if self.net.logout():
-            self.net.user == None
             self.crypto.current_keypair = None
-            print(self.net.user)
             print("[*] You have been logged out.")
             return True
         else:
@@ -235,7 +233,7 @@ class Terminal:
         # Add check that the user has the privileges to do this
         if not self.is_connected():
             return False
-        if self.net.unregister(username):
+        elif self.net.unregister(username):
             self.net.user = None
             if self.crypto.delete_keypair(f'{self.net.server_ip}-{user}'):
                 print("[*] User deleted from server and keys purged form key database.")
@@ -251,12 +249,26 @@ class Terminal:
             functions from the network class"""
         return self.net.connect(ip_port)
 
+    def disconnect(self):
+        """ Tells the network class to close the connection to the server """
+        if not self.is_connected():
+            return False
+        elif self.net.disconnect():
+            print("[*] Disconnected form the server.")
+            return True
+        else:
+            print("[!] Failed to disconnect. Maybe time from CTRL-C?")
+            return False
+
+
     def run_command(self, cmd):
         """ Parses command and performs the specified action or prints error if malformed"""
         cmd = cmd.strip().split(' ')
         # refactor these silly if statments
         if len(cmd) == 1:
-            if cmd[0] == 'logout':
+            if cmd[0] == 'disconnect':
+                return self.disconnect()
+            elif cmd[0] == 'logout':
                 return self.logout()
             elif cmd[0] == 'ls':
                 return self.net.ls()
@@ -286,15 +298,16 @@ class Terminal:
                 return self.read(cmd[1])
             elif cmd[0] == 'edit':
                 return self.edit(cmd[1])
-            elif cmd[0] == 'create':
-                return self.create(cmd[1])
             elif cmd[0] == 'delete':
                 return self.delete(cmd[1])
             # will implement later
             #elif cmd[0] == 'import-keys':
             #    return self.crypto.import_keypair(cmd[1])
         elif len(cmd) == 3:
-            pass 
+            if cmd[0] == 'create' and cmd[1] == 'note':
+                return self.create_note(cmd[1])
+            elif cmd[0] == 'create' and cmd[1] == 'note':
+                return self.create_dir(cmd[1])
         print('[!] Not a valid command! Type "help" for a list of commands')
 
     def help(self):
@@ -311,7 +324,8 @@ class Terminal:
         print("cd <dir> - Change current directory to specified.")
         print("read <note> - read specified note.")
         print("edit <note> - edit specified note.")
-        print("create <note> - create a new note.")
+        print("create note <note> - create a new note.")
+        print("create dir <dir> - create a new note.")
         print("delete <note> - delete specified note.")
         # will implement later
         #print("import-keys <path> [<ip> <user>]- import the key pair from file optionally specifying server and user")
