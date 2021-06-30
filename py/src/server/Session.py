@@ -1,4 +1,6 @@
 from Crypt import Crypt
+from bson import ObjectId
+import json
 
 class Session():
     def __init__(self, config, connection, db):
@@ -7,7 +9,6 @@ class Session():
         self.db = db
         self.crypto = Crypt()
         self.user = None
-
 
     def listen_for_cmd(self):
         """ Listens for commands from clients and hands them off to be parsed. """
@@ -32,6 +33,10 @@ class Session():
                 return self.unregister(cmd[1])
             elif cmd[0] == "cd":
                 return self.cd(cmd[1])
+            elif cmd[0] == "get_dir":
+                return self.get_dir(cmd[1])
+            elif cmd[0] == "rm_dir":
+                return self.rm_dir(cmd[1])
             elif cmd[0] == "get_note":
                 return self.get_note(cmd[1])
             elif cmd[0] == "update_note":
@@ -42,6 +47,9 @@ class Session():
                 return self.create_note(cmd[1])
             elif cmd[0] == "check_priv":
                 return self.check_priv(cmd[1])
+        elif len(cmd) == 3:
+            if cmd[0] == "mkdir":
+                return self.mkdir(cmd[1], cmd[2])
         return self.invalid_command()
     
     #implement a disconnect method
@@ -83,12 +91,13 @@ class Session():
         challenge, cipher = self.crypto.generate_login_cipher()
         self.connection.send_raw_data(cipher)
         data = self.connection.get_raw_data()
-        print(data)
         if challenge == data:
             self.user = user
+            print(f"[*] User {user['username']} logged in.")
             self.connection.send_response(True)
             return True 
         else:
+            print(f"[!] User {user['username']} failed to logged in.")
             self.connection.send_response(False) 
             return True 
 
@@ -98,6 +107,7 @@ class Session():
         print(f"[*] Logging user {self.user['username']} out of the server.")
         self.user = None
         self.connection.send_response(True)
+        print(f"[*] Annnnd they're gone.")
         return True
 
     def register(self, username):
@@ -129,15 +139,56 @@ class Session():
             print(f"[!] Could not delete user {username}.")
             return False
 
-    def ls(self):
+    # Directory Management Methods
+
+    def mkdir(self, dir_name, pwd_id):
+        """ Instruct the DB to create a new directory. """
+        pwd_id = ObjectId(pwd_id)
         if not self.valid_command():
             return True
-        pass
-    
-    def cd(self, directory):
+        # verify privs
+        # verify that file/folder not already present
+        if self.db.mkdir(dir_name, pwd_id, self.user['_id']):
+            self.connection.send_response(True)
+            print(f"[*] Created new directory {dir_name} in {pwd_id}.")
+            return True
+        else:
+            self.connection.send_response(False)
+            print(f"[!] Failed to create new directory {dir_name} in {pwd_id}.")
+            return True
+
+    def get_dir(self, dir_id):
+        """ Ask the DB for directory and send it back to the user. """
+        dir_id = ObjectId(dir_id)
         if not self.valid_command():
             return True
-        pass
+        # maybe verify privs?
+        _dir = self.db.get_dir(dir_id)
+        _dir['_id'] = str(_dir['_id'])
+        if _dir:
+            self.connection.send_response(True)
+            self.connection.send_str_data(json.dumps(_dir))
+            return True
+        else:
+            self.connection.send_response(False)
+            return True
+
+    def rm_dir(self, dir_id):
+        """ Ask the database to delete the specified directory. """
+        dir_id = ObjectId(dir_id)
+        if not self.valid_command():
+            return True
+        if self.db.rm_dir(dir_id):
+            # add verification of priv here
+            self.connection.send_response(True)
+            print(f"[*] Deleted directory with id {dir_id}")
+            return True
+        else:
+            self.connection.send_response(False)
+            print(f"[*] Database would not delete directory.")
+            return True
+
+    # Note Management Methods 
 
     def create_note(self, note):
         if not self.valid_command():

@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from bson import ObjectId
 # URGENT: Need to implement permissions and prevent non empty directory deletion
 # as well as recursive delete. Want to focus on getting basics working but will come
 # back to this.
@@ -12,7 +13,7 @@ class Database():
         self.client = MongoClient(ip, port)
         self.db = self.client.blackShard
         self.users = self.db.users
-        self.dir = self.db.dir
+        self.dirs = self.db.dirs
         self.notes = self.db.notes
 
     # Crud for user, note and location objects
@@ -40,10 +41,12 @@ class Database():
             print("[!] Failed to create note.")
             return False
     
-    def create_dir(self, dir_name, parent_dir_id):
-        _dir = {"dir_name":dir_name,"parent_dir_id":parent_dir_id,"children_ids":{}}
+    def mkdir(self, dir_name, parent_id, user_id):
+        # should owners/users be lists or a dicts
+        new_dir = {"dir_name":dir_name,"parent_id":str(parent_id),"subdirs":{},"notes":{},"owners":[str(user_id)],"users":[]}
         try:
-            self.dir.insert_one(_dir)
+            new_dir_id = self.dirs.insert_one(new_dir).inserted_id
+            self.dirs.update_one({'_id':parent_id}, {'$set':{'subdirs.'+dir_name:str(new_dir_id)}})
             print("[*] Created directory.")
             return True
         except Exception as e:
@@ -64,7 +67,23 @@ class Database():
     def get_dir(self, dir_id):
         """ Queries the database for a given directory. Returns directory dictionary 
             if directory exists or None if it does not."""
-        return self.dir.find_one({"_id":dir_id})
+        _dir = self.dirs.find_one({"_id":dir_id})
+        if _dir:
+            print(f"[*] Got directory {_dir['dir_name']} from database.")
+            return _dir
+        else:
+            print(f"[*] Could not get directory with id {dir_id}, from database.")
+            return None
+
+    def get_init_pwd_id(self):
+        """ Get the id of the root directory of the servers file structure. """
+        init_pwd = self.dirs.find_one({"dir_name":"/"})
+        if init_pwd:
+            print("[*] Got init pwd.")
+            return init_pwd['_id']
+        else:
+            print("[!] Oh dear! You don't seem to have a root directory. Did you set up the Database?")
+            return None
 
     def delete_user(self, username):
         try:
@@ -86,9 +105,18 @@ class Database():
             print("[!] Failed to delete note {note_id}.")
             return False
 
-    def delete_dir(self, dir_id):
+    def rm_dir(self, dir_id):
         try:
-            self.dir.delete_one(dir_id)
+            #might need to look at the returned object here to verify success?
+            _dir = self.get_dir(dir_id)
+            if not _dir:
+                print("[!] Could not retrieve directory for deletion.")
+                return False
+            parent_id = ObjectId(_dir['parent_id'])
+            result_1 = self.dirs.update_one({'_id':parent_id},{'$unset':{'subdirs.'+_dir['dir_name']:''}})
+            result_2 = self.dirs.delete_one({'_id':dir_id})
+            print(result_1)
+            print(result_2)
             print(f"[*] Deleted directory {dir_id}.")
             return True
         except Exception as e:

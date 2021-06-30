@@ -15,26 +15,18 @@ class Crypt():
     def load_user_public_key(self, user):
         self.current_key = RSA.importKey(user['public_key'].encode('ascii'))
 
-    def encrypt(self, text):
+# These chaps probably need some error hadeling
+
+    def rsa_encrypt_str(self, text):
         """ Encrypt text using current RSA keypair """
-        if type(text) == str:
-            text = text.encode('ascii')
-            print("[*] Sending ASCII.")
-        else:
-            print("[*] Sending Bytes.")
-        print(repr(self.current_key))
-        encryptor = PKCS1_OAEP.new(self.current_key)
-        cipher = binascii.hexlify(encryptor.encrypt(text)).decode('ascii') # might wish to keep as bytes
+        print("[*] Encrypting ASCII.")
+        text = text.encode('ascii')
+        cipher = binascii.hexlify(self.rsa_encrypt_bytes(text)).decode('ascii') # might wish to keep as bytes
         return cipher
 
-    def encrypt_bytes(self, text):
+    def rsa_encrypt_bytes(self, text):
         """ Encrypt text using current RSA keypair """
-        if type(text) == str:
-            text = text.encode('ascii')
-            print("[*] Sending ASCII.")
-        else:
-            print("[*] Sending Bytes.")
-        print(repr(self.current_key))
+        print("[*] Encrypting Bytes.")
         encryptor = PKCS1_OAEP.new(self.current_key)
         cipher = encryptor.encrypt(text)
         return cipher
@@ -54,6 +46,5 @@ class Crypt():
         # Fuck I hate this brain dead library.
         # Oh and 470 bytes is massive overkill but why the hell not! NSA can suck it ;p
         chalange =  secrets.token_bytes(470) 
-        cipher = self.encrypt_bytes(chalange)
-        print(len(cipher))
+        cipher = self.rsa_encrypt_bytes(chalange)
         return chalange, cipher 

@@ -1,5 +1,7 @@
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP
+from Crypto import Random
 import binascii
 import pickle
 from os.path import isfile
@@ -12,6 +14,8 @@ class Crypt():
         self.key_len = 4096
         self.key_db_location = key_db_location 
         self.load_key_db(password)
+
+    # Key DB Methods (used for RSA and AES keys)
 
     def create_key_db(self,):
         """ Create a empty key db file """
@@ -34,66 +38,6 @@ class Crypt():
         # add some form of encryption
         with open(self.key_db_location, 'wb') as key_db_file:
             pickle.dump(self.key_db, key_db_file)
-
-
-    def generate_keypair(self, server_ip, user): 
-        """ Creates a new key pair and returns the new key_id of the generated pair """
-        # is the source of entropy here solid?
-        keypair = RSA.generate(self.key_len)
-        key_id = f'{server_ip}-{user}'
-        if key_id in self.key_db:
-            if choice("[~] A key already exists for this user. Overwrite?", {"y", "n"}) == "n":
-                print("[!] Aborting")
-                return False
-        if self.add_keypair_to_db(key_id,  keypair):
-            print("[*] New keypair generated.")
-            self.load_keypair(server_ip,user)
-            return True
-        else:
-            print("[!] Could not add keypair to db.")
-            return False
-
-    def load_keypair(self, server_ip, user):
-        """ Attempts to load the key pair for the specified user on the specified server, 
-            returns true if key found and loaded successfully, and false if it is not """
-        try:
-            keypair = RSA.importKey(self.key_db[f'{server_ip}-{user}'])
-            print(f"[*] Key-Pair {server_ip}-{user} active.")
-        except Exception as e:
-            # Clean up error handling here
-            print("[!] Could not load key. ")
-            print(e)
-            return False
-        self.current_keypair = keypair
-        return True
-
-    # RSA
-    # Change identifiers and refactor encrypt and decrypt 
-
-    def encrypt(self, text):
-        """ Encrypt text using current RSA keypair """
-        text = text.encode('utf-8')
-        encryptor = PKCS1_OAEP.new(self.current_keypair.publickey())
-        cipher = binascii.hexlify(encryptor.encrypt(text)).decode('ascii') # might wish to keep as bytes
-        return cipher
-
-    def decrypt(self, cipher):
-        """ Decrypt cipher text using the current RSA keypair """
-        print(cipher)
-        print(len(cipher))
-        cipher = cipher.encode('ascii')
-        decryptor = PKCS1_OAEP.new(self.current_keypair)
-        text = decryptor.decrypt(cipher)
-        return text.decode('ascii')
-
-    def decrypt_bytes(self, cipher):
-        """ Decrypt cipher text using the current RSA keypair """
-        print(cipher)
-        print(len(cipher))
-        cipher = cipher
-        decryptor = PKCS1_OAEP.new(self.current_keypair)
-        text = decryptor.decrypt(cipher)
-        return text
 
     def add_keypair_to_db(self, key_id, key):
         """ Adds a key to the db """
@@ -126,14 +70,91 @@ class Crypt():
         """ Read public private key pair from file in standard format and add to db """
         pass
 
+    # RSA Key Management Methods
+
+    def generate_keypair(self, server_ip, user): 
+        """ Creates a new key pair and returns the new key_id of the generated pair """
+        # is the source of entropy here solid?
+        keypair = RSA.generate(self.key_len)
+        key_id = f'{server_ip}-{user}'
+        if key_id in self.key_db:
+            if choice("[~] A key already exists for this user. Overwrite?", {"y", "n"}) == "n":
+                print("[!] Aborting")
+                return False
+        if self.add_keypair_to_db(key_id,  keypair):
+            print("[*] New keypair generated.")
+            self.load_keypair(server_ip,user)
+            return True
+        else:
+            print("[!] Could not add keypair to db.")
+            return False
+
+    def load_keypair(self, server_ip, user):
+        """ Attempts to load the key pair for the specified user on the specified server, 
+            returns true if key found and loaded successfully, and false if it is not """
+        try:
+            keypair = RSA.importKey(self.key_db[f'{server_ip}-{user}'])
+            print(f"[*] Key-Pair {server_ip}-{user} active.")
+        except Exception as e:
+            # Clean up error handling here
+            print("[!] Could not load key. ")
+            print(e)
+            return False
+        self.current_keypair = keypair
+        return True
+
     def list_keypairs(self,):
         """ Print out a list of keypairs in the key_db """
-        print("\t Server IP   User ")
-        print("\t------------------")
+        # Maybe add some code to make this adaptive to the length of peoples usernames
+        # and add some centring to make it look pretty? Not vital but a nice touch.
+        print("\t Server IP\tUser ")
+        print("\t-----------------------------")
         for key_id in self.key_db:
             ip, user = key_id.split('-',1)
-            print(f"\t{ip} , {user}")
+            print(f"\t {ip}\t{user}")
 
-#    def retrive_keypair(self, key_id):
-#        pass
+    # RSA Based Cryptographic Methods
 
+    def rsa_encrypt_str(self, text):
+        """ Encrypt text using current RSA keypair """
+        text = text.encode('utf-8')
+        cipher = binascii.hexlify(self.rsa_encrypt_bytes(text)).decode('ascii')
+        return cipher
+    
+    def rsa_encrypt_bytes(self, text):
+        """ Encrypt text using current RSA keypair """
+        encryptor = PKCS1_OAEP.new(self.current_keypair.publickey())
+        cipher = encryptor.encrypt(text)
+        return cipher
+
+    def rsa_decrypt_str(self, cipher):
+        """ Decrypt cipher text using the current RSA keypair """
+        cipher = cipher.encode('ascii')
+        text = decryptor.decrypt(self.rsa_decrypt_bytes(cipher)).decode('ascii')
+        return text
+
+    def rsa_decrypt_bytes(self, cipher):
+        """ Decrypt cipher text using the current RSA keypair """
+        decryptor = PKCS1_OAEP.new(self.current_keypair)
+        text = decryptor.decrypt(cipher)
+        return text
+
+    # AES Based Cryptographic Methods 
+
+    def aes_encrypt_str(self, text, key, iv=None):
+        return aes_encrypt_bytes(text.encode('ascii'), key, iv).decode('ascii')
+    
+    def aes_encrypt_bytes(self, text, key, iv=None):
+        if not iv:
+            iv = Random.new().read(AES.block_size) # do I trust this? Maybe yes but maybe not
+        encryptor = AES.new(key, AES.MODE_CFB, iv)
+        cipher = iv + encryptor.encrypt(text)
+        return cipher, iv
+
+    def aes_decrypt_str(self, cipher, key, iv):
+        return aes_decrypt_bytes(cipher.encode('ascii'), key, iv).decode('ascii')
+
+    def aes_decrypt_bytes(self, cipher, key, iv):
+        decryptor = AES.new(key, AES.MODE_CFB, iv)
+        text = decryptor.decrypt(cipher - iv)
+        return text

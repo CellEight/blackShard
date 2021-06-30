@@ -21,6 +21,7 @@ class Connection():
 
     def send_raw_data(self, data):
         """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
+        print(data)
         try:
             self.connection.send(data)
             return True

@@ -19,7 +19,13 @@ class Terminal:
         self.crypto = Crypt('nopasswordyet')
         if motd:
             self.showMotd()
+        self.user = None
+        self.pwd = None # maybe set this to None and init on connection? Should be a tuple or object really
     
+    # Add better error and failure handling to all of these methods that need it
+
+    # CLI Methods
+
     def showMotd(self):
         """ print motd banner """
         buff='    __    __           __   _____ __                   __\n'
@@ -74,192 +80,15 @@ class Terminal:
         """ Show the command line and take input """
         while True:
             if self.net.server_ip != None:
-                if self.net.user:
-                    cmd = input(f'blackShard~{self.net.user}@{self.net.server_ip}-{self.net.pwd}# ')
+                # update pwd
+                self.pwd = self.net.get_dir(self.pwd['_id'])
+                if self.user:
+                    cmd = input(f'blackShard~{self.user}@{self.net.server_ip}-{self.pwd["dir_name"]}# ')
                 else:
-                    cmd = input(f'blackShard~anonymous@{self.net.server_ip}-{self.net.pwd}# ')
+                    cmd = input(f'blackShard~anonymous@{self.net.server_ip}-{self.pwd["dir_name"]}# ')
             else:
                 cmd = input(f'blackShard~# ')
             self.run_command(cmd)
-    
-    def is_connected(self):
-        """ Just checks if a connection to a server has yet been made. """
-        if not self.net.socket:
-            print(f"[!] You are not yet connected to a server!")
-            return False
-        else:
-            return True
-
-    def is_logged_in(self):
-        """ Just checks if the client is logged in. """
-        if not self.net.user:
-            print(f"[!] You are not yet logged in!")
-            return False
-        else:
-            return True
-
-    # Add better error and failure handling to all of these methods
-
-    def read(self, note_id):
-        """ Download a local copy of note decrypt and open in text editor """
-        if not self.net.user:
-            print(f"[!] You are not yet logged into a server!") 
-            return False
-        elif not self.net.note_exists(note_id):
-            print(f"[*] No note of this name exist at current location.")
-            return False
-        elif not self.net.check_privilages(note_id, 'r'):
-            print(f"[*] You lack the privileges required to read this file")
-            return False
-        response, cipher = self.net.get(note_id)
-        if cipher:
-            note = self.crypto.decrypt(cipher)
-            with open(f'/tmp/{note_id}.txt', 'w') as f:
-                f.write(note)
-            os.system(f"{self.config.text_editor} /tmp/{note_id}.txt")
-        return True
-    
-    def edit(self, note_id):
-        """ Read a file with read() and then send any updates back to the server. """
-        if not self.net.user:
-            print(f"[!] You are not yet logged into a server!") 
-            return False
-        elif not self.net.note_exists(note_id):
-            print(f"[*] No note of this name exist at current location.")
-            return False
-        elif not self.net.check_privilages(note_id, 'e'):
-            print(f"[*] You lack the privileges required to edit this note.")
-            return False
-        self.read(note_id)
-        with open(f'/tmp/{note_id}.txt', 'r') as f:
-            note = f.read()
-        cipher = self.crypto.encrypt(note)
-        if self.net.update(note_id, cipher):
-            print(f"[*] Note '{note_id}' was successfully updated.")
-            return True
-        else:
-            print(f"[*] Note '{note_id}' could not be updated.")
-            return False 
-
-    def create_note(self, note_name): 
-        """ Create a new note with the specified id and edit. """
-        if not self.net.user:
-            print(f"[!] You are not yet logged into a server!") 
-            return False
-        elif not self.net.check_privilages(note_name, 'c'):
-            print(f"[*] You lack the privileges required to create a file in this location.")
-            return False
-        elif self.net.note_exists(note_id):
-            print(f"[*] A note of the same name already exists at this location.")
-            return False
-        self.net.create(note_id)
-        return self.edit(note_id)
-       
-    def delete(self, note_id):
-        """ Delete a specified note """
-        if not self.net.user:
-            print(f"[!] You are not yet logged into a server!") 
-            return False
-        elif not self.net.note_exists(note_id):
-            print(f"[*] No note of this name exist at current location.")
-            return False
-        elif not self.net.check_privilages(note_id, 'd'):
-            print(f"[*] You lack the privileges required to delete this note.")
-            return False
-        return self.net.delete(note_id)
-
-    def login(self, user):
-        """ Login to the server as the specified user"""
-        if not self.is_connected():
-            return False
-        self.net.send_cmd(f"login {user}")
-        if not self.net.get_response():
-            print("[!] User does not exist on this server.")
-            return False
-        try:
-            cipher = self.net.get_login_cipher(user)
-            self.crypto.load_keypair(self.net.server_ip, user)
-            response = self.crypto.decrypt_bytes(cipher)
-            if self.net.send_login_response(response):
-                self.net.user = user
-                print(f"[*] Login Successful. Welcome {user}.")
-                return True
-            else:
-                print(f"[!] Login Failed. Are you sure you're in the right place son?")
-                return False
-        except Exception as e:
-            print(e)
-            print(f"[!] Login Failed.")
-            return False
-    
-    def logout(self):
-        """ Logs the user out of the server. """
-        if not self.is_connected():
-            return False
-        if not self.is_logged_in():
-            return False
-        if self.net.logout():
-            self.crypto.current_keypair = None
-            print("[*] You have been logged out.")
-            return True
-        else:
-            print("[!] Failed to logout!")
-            return False
-
-    def register(self, user):
-        """ Asks server to create a new account and, if possible, it creates a 
-            new key pair and communicates the public key to the server ."""
-        if not self.is_connected():
-            return False
-        if self.net.check_privilages(None, 'g'): # g for reGister, I am deeply sorry
-            if self.crypto.generate_keypair(self.net.server_ip, user):
-                public_key = self.crypto.current_keypair.publickey().exportKey().decode('ascii')
-                if self.net.register(user, public_key):
-                    print(f"[*] Registration complete. Welcome to the server {user}.")
-                    return True
-                else:
-                    self.crypto.current_key = None
-                    print("[!] Registration failed. Try again?")
-                    return False
-            else:
-                return False
-        else:
-            print("[!] You are not permitted to perform this action.")
-            return False
-
-    def unregister(self, username):
-        """ Instructs the server to delete the active user and if success purges 
-            their keys from the key database """
-        # Add check that the user has the privileges to do this
-        if not self.is_connected():
-            return False
-        elif self.net.unregister(username):
-            self.net.user = None
-            if self.crypto.delete_keypair(f'{self.net.server_ip}-{user}'):
-                print("[*] User deleted from server and keys purged form key database.")
-                return True 
-            else:
-                print("[~] User deleted from server but could not purge keys form key db.")
-                return False
-        else:
-            print("[!] Failed to delete user from server. Try again or contact Admin.")
-
-    def connect(self,ip_port):
-        """ Silly yes, but I am aesthetically uncomfortable with  run_command calling 
-            functions from the network class"""
-        return self.net.connect(ip_port)
-
-    def disconnect(self):
-        """ Tells the network class to close the connection to the server """
-        if not self.is_connected():
-            return False
-        elif self.net.disconnect():
-            print("[*] Disconnected form the server.")
-            return True
-        else:
-            print("[!] Failed to disconnect. Maybe time from CTRL-C?")
-            return False
-
 
     def run_command(self, cmd):
         """ Parses command and performs the specified action or prints error if malformed"""
@@ -270,8 +99,10 @@ class Terminal:
                 return self.disconnect()
             elif cmd[0] == 'logout':
                 return self.logout()
+            elif cmd[0] == 'pwd':
+                return self.print_pwd()
             elif cmd[0] == 'ls':
-                return self.net.ls()
+                return self.ls()
             elif cmd[0] == 'list-keys':
                 return self.crypto.list_keypairs()
             elif cmd[0] == "help":
@@ -292,22 +123,24 @@ class Terminal:
                 return self.register(cmd[1])
             elif cmd[0] == 'unregister':
                 return self.net.unregister(cmd[1])
+            elif cmd[0] == 'mkdir':
+                return self.mkdir(cmd[1])
             elif cmd[0] == 'cd':
-                return self.net.cd(cmd[1])
+                return self.cd(cmd[1])
             elif cmd[0] == 'read':
                 return self.read(cmd[1])
             elif cmd[0] == 'edit':
                 return self.edit(cmd[1])
-            elif cmd[0] == 'delete':
-                return self.delete(cmd[1])
+            elif cmd[0] == 'rm':
+                return self.rm(cmd[1])
             # will implement later
             #elif cmd[0] == 'import-keys':
             #    return self.crypto.import_keypair(cmd[1])
         elif len(cmd) == 3:
             if cmd[0] == 'create' and cmd[1] == 'note':
-                return self.create_note(cmd[1])
-            elif cmd[0] == 'create' and cmd[1] == 'note':
-                return self.create_dir(cmd[1])
+                return self.create_note(cmd[2])
+            elif cmd[0] == "rm" and cmd[1] == "recursive":
+                return self.rm(cmd[2],recursive=True)
         print('[!] Not a valid command! Type "help" for a list of commands')
 
     def help(self):
@@ -334,13 +167,326 @@ class Terminal:
         print("motd - Displays the message of the day banner.")
         print("quit - Exits the program.")
 
-    def isValidIpAddr(self, addr):
-        """ Check using a regex that the supplied string is a valid ip address """
-        return True
-
     def quit(self):
         """ Exit the program and return to the shell """
         exit(0)
+
+
+    # Connection Management Methods
+
+    def is_connected(self):
+        """ Just checks if a connection to a server has yet been made. """
+        if not self.net.socket:
+            print(f"[!] You are not yet connected to a server!")
+            return False
+        else:
+            return True
+   
+    def connect(self,ip_port):
+        """ Silly yes, but I am aesthetically uncomfortable with  run_command calling 
+            functions from the network class"""
+        # maybe move more logic here? Seems a bit sparse?
+        init_pwd_id = self.net.connect(ip_port)
+        if init_pwd_id:
+            self.pwd = self.net.get_dir(init_pwd_id)
+            return True
+        else:
+            return False
+
+    def disconnect(self):
+        """ Tells the network class to close the connection to the server """
+        if not self.is_connected():
+            return False
+        elif self.net.disconnect():
+            self.user = None
+            self.pwd = None 
+            print("[*] Disconnected form the server.")
+            return True
+        else:
+            print("[!] Failed to disconnect. Maybe time from CTRL-C?")
+            return False
+
+    # User Management Methods
+
+    def login(self, user):
+        """ Login to the server as the specified user"""
+        if not self.is_connected():
+            return False
+        self.net.send_cmd(f"login {user}")
+        if not self.net.get_response():
+            print("[!] User does not exist on this server.")
+            return False
+        try:
+            cipher = self.net.get_login_cipher(user)
+            self.crypto.load_keypair(self.net.server_ip, user)
+            response = self.crypto.rsa_decrypt_bytes(cipher)
+            if self.net.send_login_response(response):
+                self.user = user
+                print(f"[*] Login Successful. Welcome {user}.")
+                return True
+            else:
+                print(f"[!] Login Failed. Are you sure you're in the right place son?")
+                return False
+        except Exception as e:
+            print(e)
+            print(f"[!] Login Failed.")
+            return False
+    
+    def logout(self):
+        """ Logs the user out of the server. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        if self.net.logout():
+            self.user = None
+            self.crypto.current_keypair = None
+            print("[*] You have been logged out.")
+            return True
+        else:
+            print("[!] Failed to logout!")
+            return False
+
+    def register(self, user):
+        """ Asks server to create a new account and, if possible, it creates a 
+            new key pair and communicates the public key to the server ."""
+        if not self.is_connected():
+            return False
+        if self.net.check_privilages(None, 'g'): # g for reGister, I am deeply sorry
+            if self.crypto.generate_keypair(self.net.server_ip, user):
+                public_key = self.crypto.current_keypair.publickey().exportKey().decode('ascii')
+                if self.net.register(user, public_key):
+                    self.user = user
+                    print(f"[*] Registration complete. Welcome to the server {user}.")
+                    return True
+                else:
+                    self.crypto.current_key = None
+                    print("[!] Registration failed. Try again?")
+                    return False
+            else:
+                return False
+        else:
+            print("[!] You are not permitted to perform this action.")
+            return False
+
+    def unregister(self, username):
+        """ Instructs the server to delete the active user and if success purges 
+            their keys from the key database """
+        # Add check that the user has the privileges to do this
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        elif self.net.unregister(username):
+            self.user = None
+            if self.crypto.delete_keypair(f'{self.net.server_ip}-{user}'):
+                print("[*] User deleted from server and keys purged form key database.")
+                return True 
+            else:
+                print("[~] User deleted from server but could not purge keys form key db.")
+                return False
+        else:
+            print("[!] Failed to delete user from server. Try again or contact Admin.")
+
+    def is_logged_in(self):
+        """ Just checks if the client is logged in. """
+        if not self.user:
+            print(f"[!] You are not yet logged in!")
+            return False
+        else:
+            return True
+
+    # Note all path based functionality is very simple atm, cba to make it more 
+    # complex yet as this will require me actually using my brain.
+
+    # Common Note and Directory Methods
+
+    # Add checks that user is logged in
+
+    def rm(self, item):
+        """ Delete a note or a directory in the present working directory. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        if item in self.pwd['notes']:
+            return self.rm_note(self.pwd['notes'][item]) 
+        elif item in self.pwd['subdirs']:
+            return self.rm_dir(self.pwd['subdirs'][item]) 
+        else:
+            print("[!] No such note or directory exists in present location.")
+            return False
+
+    def rename(self, item, new_item_name):
+        """ Rename a note or a directory in the present working directory. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        if item in self.pwd['notes']:
+            return self.rename_note(self.pwd['notes'][item], new_item_name) 
+        elif item in self.pwd['subdirs']:
+            return self.rename_directory(self.pwd['subdirs'][item], new_item_name) 
+        else:
+            print("[!] No such note or directory exists in present location.")
+            return False
+
+    # Directory Methods
+    #
+    # These methods all assume that the local copy of the pwd is a true representation
+    # of it's state on the server. This of course need not be the case. I should implement
+    # a method to check for existence etc. before attempting an action as well as adding
+    # code on the server side to prevent the users doing impossible or unauthorized actions.
+
+    def mkdir(self, dir_name):
+        """ Create a new directory in the present working directory. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        if (not dir_name in self.pwd['subdirs']) and (not dir_name in self.pwd['users']): 
+            # priv check here
+            return self.net.mkdir(dir_name, self.pwd['_id'])
+        else:
+            print("[!] Directory already exists in present location.")
+            return False
+    
+    def print_pwd(self):
+        """ Print the present working directory. """
+        if self.is_connected():
+            print(self.pwd['dir_name'])
+            return True
+        else:
+            return False
+
+    def ls(self):
+        """ Print a list of all the notes and directories in the present 
+            working directory, along with details, in alphabetical order."""
+        # just going to write a very simple implementation without any of the
+        # algorithmic foibles for now.
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        print('')
+        print("Notes")
+        print("--------------------")
+        for note in self.pwd['notes'].values():
+            print(note)
+        print('')
+        print("Directories")
+        print("--------------------")
+        for subdir in self.pwd['subdirs'].items():
+            print(subdir[0],'\t',subdir[1])
+        print('')
+        return True
+    
+
+    def cd(self, dir_name):
+        """ Move to another directory. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        # priv check here?
+        if  dir_name == "..":
+            new_dir = self.net.get_dir(self.pwd['parent_id'])
+        elif dir_name in self.pwd['subdirs']:
+            new_dir = self.net.get_dir(self.pwd['subdirs'][dir_name])
+        elif dir_name in self.pwd['notes']:
+            print(f"[!] {dir_name} is not a directory.")
+            return False
+        else:
+            print("[!] No such directory exists in present location.")
+            return False
+        if new_dir:
+            self.pwd = new_dir
+            return True
+        else:
+            print(f"[!] Could not change directory to {dir_name}.")
+            return False
+
+    def rename_dir(self, dir_id, new_dir_name):
+        """ Update the name of a directory. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        # priv check here
+        return self.net.rename_dir(dir_id, new_dir_name)
+
+    
+    def rm_dir(self, dir_id, recursive=False):
+        # I was drunk when I wrote this this please review with great care
+        # Recursive potion is UNTESTED
+        # check priv
+        # existence check
+        _dir = self.net.get_dir(dir_id)
+        if recursive and (not _dir['subdirs'] == {}):
+            # loop over all subdirs make recursive call and if they all return True return True, else False
+            # This is a kinda non pythonic way of doing this
+            for subdir in _dir['subdirs']:
+                if not self.rm_dir(_dir['subdirs'][subdir], recursive=True):
+                    return False
+            return True
+        elif _dir['subdirs'] == {} and _dir['notes'] == {}:
+            return self.net.rm_dir(dir_id)
+        else:
+            print("[!] Directory is not empty.")
+            return False
+
+    # Note Methods
+
+    def create_note(self, note_name): 
+        """ Create a new note with the specified id and edit. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        # priv check here
+        elif note_name in self.pwd['notes'] or note_name in self.pwd['subdirs']:
+            print(f"[*] A note or directory of the same name already exists at this location.")
+            return False
+        self.net.create(note_id)
+        return self.edit(note_id)
+
+    def read_note(self, note_id):
+        """ Download a local copy of note decrypt and open in text editor """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        elif not self.net.note_exists(note_id):
+            print(f"[*] No note of this name exist at current location.")
+            return False
+        elif not self.net.check_privilages(note_id, 'r'):
+            print(f"[*] You lack the privileges required to read this file")
+            return False
+        response, cipher = self.net.get(note_id)
+        if cipher:
+            note = self.crypto.rsa_decrypt_str(cipher)
+            with open(f'/tmp/{note_id}.txt', 'w') as f:
+                f.write(note)
+            os.system(f"{self.config.text_editor} /tmp/{note_id}.txt")
+        return True
+    
+    def edit_note(self, note_id):
+        """ Read a file with read() and then send any updates back to the server. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        # priv check here
+        elif not note_id in self.pwd['notes']:
+            print(f"[*] No note of this name exist at current location.")
+            return False
+        self.read(note_id)
+        with open(f'/tmp/{note_id}.txt', 'r') as f:
+            note = f.read()
+        cipher = self.crypto.aes_encrypt_str(note)
+        if self.net.update(note_id, cipher):
+            print(f"[*] Note '{note_id}' was successfully updated.")
+            return True
+        else:
+            print(f"[*] Note '{note_id}' could not be updated.")
+            return False 
+    
+    def rename_note(self, note_id, new_note_name):
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        pass
+       
+
+    def rm_note(self, note_id):
+        """ Delete a specified note """
+        if not self.user:
+            print(f"[!] You are not yet logged into a server!") 
+            return False
+        elif not self.net.note_exists(note_id):
+            print(f"[*] No note of this name exist at current location.")
+            return False
+        elif not self.net.check_privilages(note_id, 'd'):
+            print(f"[*] You lack the privileges required to delete this note.")
+            return False
+        return self.net.delete_note(note_id)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, lambda signum, stack : exit(1))
