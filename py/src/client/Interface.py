@@ -1,6 +1,6 @@
 # Libraries
 # ---------
-import os, signal
+import os, subprocess, signal
 from termcolor import colored
 from Crypt import Crypt
 from Network import Network
@@ -427,28 +427,37 @@ class Terminal:
             return False
         # priv check here
         elif note_name in self.pwd['notes'] or note_name in self.pwd['subdirs']:
-            print(f"[*] A note or directory of the same name already exists at this location.")
+            print("[*] A note or directory of the same name already exists at this location.")
             return False
-        self.net.create(note_id)
-        return self.edit(note_id)
+        note_path = self.create_temp()  
+        self.edit_local_note(note_path)
+        enc_aes_key = self.crypto.rsa_encrypt(self.crypto.generate_aes_key())
+        note_id = self.net.create_note(note_name, enc_aes_key)
+        if self.update_note(note_id, note_path, aes_key):
+            print(f"[*] Create note {note_name} in {self.pwd['dir_name']}.")
+            return True
+        else:
+            print(f"[!] Could not create note {note_name} in {self.pwd['dir_name']}.")
+            return False
 
-    def read_note(self, note_id):
+    def read_note(self, note_name):
         """ Download a local copy of note decrypt and open in text editor """
         if (not self.is_connected()) or (not self.is_logged_in()):
-            return False
-        elif not self.net.note_exists(note_id):
+            return None 
+        #check priv
+        elif not note_name in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
-            return False
-        elif not self.net.check_privilages(note_id, 'r'):
-            print(f"[*] You lack the privileges required to read this file")
-            return False
-        response, cipher = self.net.get(note_id)
-        if cipher:
-            note = self.crypto.rsa_decrypt_str(cipher)
-            with open(f'/tmp/{note_id}.txt', 'w') as f:
-                f.write(note)
-            os.system(f"{self.config.text_editor} /tmp/{note_id}.txt")
-        return True
+            return None
+        note_path = self.get_note(self.pwd['notes'][note_name])
+        if note_path:
+            with open(note_path, 'w') as note_fd:
+                note_fd.write(note)
+            os.system(f"{self.config.text_editor} {note_path}")
+            print(f"[*] Read note {note_name}.")
+            return note_path, aes_key 
+        else:
+            print(f"[!] Could not get note {note_name} from server.")
+            return None 
     
     def edit_note(self, note_id):
         """ Read a file with read() and then send any updates back to the server. """
@@ -458,35 +467,68 @@ class Terminal:
         elif not note_id in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
             return False
-        self.read(note_id)
-        with open(f'/tmp/{note_id}.txt', 'r') as f:
-            note = f.read()
-        cipher = self.crypto.aes_encrypt_str(note)
-        if self.net.update(note_id, cipher):
+        note_path, aes_key = self.read(note_id)
+        if self.update_note(note_path, aes_key):
             print(f"[*] Note '{note_id}' was successfully updated.")
             return True
         else:
             print(f"[*] Note '{note_id}' could not be updated.")
             return False 
-    
+
+    # save this till later, not very important 
     def rename_note(self, note_id, new_note_name):
+        """ Change the name of a note stored on the server. """
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         pass
-       
 
-    def rm_note(self, note_id):
-        """ Delete a specified note """
-        if not self.user:
-            print(f"[!] You are not yet logged into a server!") 
+    def rm_note(self, note_name):
+        """ Delete a specified note on the server. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
             return False
-        elif not self.net.note_exists(note_id):
+        # check priv
+        elif not note_name in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
             return False
-        elif not self.net.check_privilages(note_id, 'd'):
-            print(f"[*] You lack the privileges required to delete this note.")
+        elif self.net.delete_note(self.pwd['notes'][note_name]):
+            print("[*] Note {note_name} deleted.")
+            return True
+        else:
+            print("[!] Could not delete note {note_name}.")
+    
+    def get_note(self, note_id):
+        """ Get note from server, decrypt and save in temp file. """
+        cipher, enc_aes_key, iv = self.net.get_note(note_id)
+        aes_key = self.crypto.rsa_decrypt_str(enc_aes_key)
+        note = self.crypto.aes_decrypt(cipher, aes_key, iv)
+        note_path = self.create_temp()
+        with open(note_path, 'w') as note_fd:
+            note_fd.write(note)
+        return note_path
+
+
+    def edit_local_note(self, note_path):
+        """ Open local copy of a note in the system text editor. """
+        os.system(f'{self.config.text_editor} {note_path}]')
+        
+
+    def update_note(note_id, note_path, aes_key):
+        """ Encrypt note using AES and send to server. """
+        with open(note_path, 'r') as note_fd:
+            note =  note_fd.read()
+        cipher, iv = self.crypto.aes_encrypt_str(note, aes_key)
+        if self.net.update_note(cipher, iv):
+            print(f"[*] Note was saved to server with id {note_id}.")
+            return True
+        else:
+            print(f"[!] Failed to save note to server.")
             return False
-        return self.net.delete_note(note_id)
+
+    def create_temp(self):
+        """ Create a temporary file in the systems /tmp directory """
+        temp_path = subprocess.run(['mktemp'], stdout=subprocess.PIPE).stdout
+        return temp_path
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, lambda signum, stack : exit(1))
