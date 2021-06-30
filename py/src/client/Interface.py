@@ -432,9 +432,9 @@ class Terminal:
         note_path = self.create_temp()  
         self.edit_local_note(note_path)
         enc_aes_key = self.crypto.rsa_encrypt(self.crypto.generate_aes_key())
-        note_id = self.net.create_note(note_name, enc_aes_key)
-        if self.update_note(note_id, note_path, aes_key):
-            print(f"[*] Create note {note_name} in {self.pwd['dir_name']}.")
+        note_id = self.net.create_note(note_name, enc_aes_key, self.pwd['_id'])
+        if note_id and self.update_note(note_id, note_path, aes_key):
+            print(f"[*] Created note {note_name} in {self.pwd['dir_name']}.")
             return True
         else:
             print(f"[!] Could not create note {note_name} in {self.pwd['dir_name']}.")
@@ -490,7 +490,7 @@ class Terminal:
         elif not note_name in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
             return False
-        elif self.net.delete_note(self.pwd['notes'][note_name]):
+        elif self.net.rm_note(self.pwd['notes'][note_name]):
             print("[*] Note {note_name} deleted.")
             return True
         else:
@@ -499,12 +499,15 @@ class Terminal:
     def get_note(self, note_id):
         """ Get note from server, decrypt and save in temp file. """
         cipher, enc_aes_key, iv = self.net.get_note(note_id)
-        aes_key = self.crypto.rsa_decrypt_str(enc_aes_key)
-        note = self.crypto.aes_decrypt(cipher, aes_key, iv)
-        note_path = self.create_temp()
-        with open(note_path, 'w') as note_fd:
-            note_fd.write(note)
-        return note_path
+        if cipher and enc_aes_key and iv:
+            aes_key = self.crypto.rsa_decrypt_str(enc_aes_key)
+            note = self.crypto.aes_decrypt(cipher, aes_key, iv)
+            note_path = self.create_temp()
+            with open(note_path, 'w') as note_fd:
+                note_fd.write(note)
+            return note_path
+        else:
+            return None
 
 
     def edit_local_note(self, note_path):
@@ -517,7 +520,7 @@ class Terminal:
         with open(note_path, 'r') as note_fd:
             note =  note_fd.read()
         cipher, iv = self.crypto.aes_encrypt_str(note, aes_key)
-        if self.net.update_note(cipher, iv):
+        if self.net.update_note(note_id, cipher, iv):
             print(f"[*] Note was saved to server with id {note_id}.")
             return True
         else:

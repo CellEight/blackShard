@@ -109,9 +109,6 @@ class Network:
             return False
 
     def unregister(self, username):
-        if not self.socket:
-            print("[!] You are not yet connected to a sever!")
-            return False
         return self.send_cmd(f'unregister {username}')
 
     def logout(self):
@@ -125,10 +122,6 @@ class Network:
     
     def mkdir(self, dir_name, pwd_id):
         """ Ask the server to create a directory in the specified pwd. """
-        if not self.socket:
-            print("[!] You are not yet connected to a sever!")
-            return False
-        # Check priv
         else:
             if self.send_cmd(f'mkdir {dir_name} {pwd_id}') and self.get_response():
                 print(f"[*] Directory {dir_name} created in present working directory.")
@@ -139,9 +132,6 @@ class Network:
 
     def get_dir(self, dir_id):
         """ Ask the server for a directories dictionary. """
-        if not self.socket:
-            print("[!] You are not yet connected to a sever!")
-            return None 
         try:
             if self.send_cmd(f'get_dir {dir_id}') and self.get_response():
                 return json.loads(self.get_str_data())
@@ -158,9 +148,6 @@ class Network:
 
     def rm_dir(self, dir_id):
         """ Ask the server to delete the directory with the given id. """
-        if not self.socket:
-            print("[!] You are not yet connected to a sever!")
-            return False
         try:
             if self.send_cmd(f'rm_dir {dir_id}') and self.get_response():
                 print(f"[*] Deleted directory with id {dir_id}.")
@@ -177,29 +164,47 @@ class Network:
     # Note Methods
 
     def create_note(self, note_name, dir_id):
-        return self.send_cmd(f'create note {note_name} {dir_id}')
+        """ Ask the server to create a new note in the specified directory 
+            with the specified name. """
+        if self.send_cmd(f'create_note {note_name} {dir_id}') and self.get_response():
+            return self.get_str_data() # get the note_id
+        else:
+            return None
 
+    # Maybe change this up so notes are dicts/lists and are sent as json objects?
     def get_note(self, note_id):
-        return self.send_cmd(f'update {note_id}')
+        """ Ask the server to retrieve a specific note. """
+        if self.send_cmd(f'get_note {note_id}') and self.get_response():
+            cipher = self.get_str_data()
+            enc_aes_key = self.get_str_data
+            iv = self.get_str_data()
+            return cipher, enc_aes_key, iv
+        else:
+            return None, None
 
-    def update_note(self, note_id, cipher):
-        return self.send_cmd(f'update {note_id}')
-
+    def update_note(self, note_id, cipher, iv):
+        """ Ask the server to update the contents of a note. """
+        if self.send_cmd(f'update {note_id}') and self.get_response():
+            self.send_str_data(cipher)
+            self.send_str_data(iv)
+            if self.get_response():
+                return True
+            else:
+                return False
+            
     def delete_note(self, note_id):
-        return self.send_cmd(f'del {note_id}')
+        """ Ask the sever to delete specific note. """
+        if self.send_cmd(f'rm_note {note_id}') and self.get_response():
+            return True
+        else:
+            return False
 
-    def check_note_exist(self, note_id):
-        return self.send_cmd(f'exists note {note_id}')
-
-    def check_privilages(self, note_id, operation):
-        """ This function queries the server to confirm that the client has sufficient 
-            privileges to perform the specified operation."""
-        # This feature will be implemented later, for now just return True
-        #return self.send_cmd(f'priv {note_id} {operation}')
-        return True
 
     # Transmission Methods
-
+    
+    # Could I add another get response that verifies the success or failure of the command 
+    # or even just if you have permissions require for an action? Could allow for better 
+    # error messages to the user.
     def send_cmd(self, cmd):
         """ Send a command to the server and get response confirming validity.
             Return True if sever confirms validity of command and False otherwise."""
