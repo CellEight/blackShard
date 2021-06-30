@@ -1,3 +1,4 @@
+import datetime
 from pymongo import MongoClient
 from bson import ObjectId
 # URGENT: Need to implement permissions and prevent non empty directory deletion
@@ -52,8 +53,10 @@ class Database():
         now  = datetime.datetime.utcnow()
         note = {"note_name":note_name,"dir_id":dir_id,"enc_aes_keys":{username:enc_aes_key},"iv":"","cipher":"","created":now,"last_updated":now} 
         try:
-            result = self.notes.insert_one(note)
-            return result.inserted_id
+            # add more verification of success
+            note_id = str(self.notes.insert_one(note).inserted_id)
+            self.dirs.update_one({'_id':dir_id}, {'$set':{'notes.'+note_name:note_id}})
+            return note_id
         except Exception as e:
             print(e)
             return None
@@ -63,7 +66,7 @@ class Database():
             if note exists or None if it does not."""
         return self.notes.find_one({"_id":note_id})
 
-    def update_note(note_id, cipher, iv):
+    def update_note(self, note_id, cipher, iv):
         """ Update the cipher text, iv and timestamp of the specified note. """
         now  = datetime.datetime.utcnow()
         try:

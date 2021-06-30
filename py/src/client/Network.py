@@ -166,7 +166,7 @@ class Network:
         """ Ask the server to create a new note in the specified directory 
             with the specified name. """
         if self.send_cmd(f'create_note {note_name} {dir_id}') and self.get_response():
-            self.send_str_data(enc_aes_key)
+            self.send_raw_data(enc_aes_key)
             if self.get_response():
                 return self.get_str_data() # get the note_id
             else:
@@ -187,9 +187,9 @@ class Network:
 
     def update_note(self, note_id, cipher, iv):
         """ Ask the server to update the contents of a note. """
-        if self.send_cmd(f'update {note_id}') and self.get_response():
+        if self.send_cmd(f'update_note {note_id}') and self.get_response():
             self.send_str_data(cipher)
-            self.send_str_data(iv)
+            self.send_raw_data(iv)
             if self.get_response():
                 return True
             else:

@@ -1,9 +1,10 @@
+import binascii
+import pickle
+import secrets
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto import Random
-import binascii
-import pickle
 from os.path import isfile
 from Util import choice
 
@@ -65,7 +66,8 @@ class Crypt():
         with open(Path(location)/f"{key_id}.priv", 'w') as priv:
             priv.write(self.key_db[key_id].exportKey().decode('ascii'))
             print(f"[*] Private Key saved at '{Path(location)}/{key-id}.priv'")
-         
+    
+    # This can wait a while
     def import_keypair(self, keypair_location):
         """ Read public private key pair from file in standard format and add to db """
         pass
@@ -139,10 +141,17 @@ class Crypt():
         text = decryptor.decrypt(cipher)
         return text
 
+    # AES Key Management Methods
+
+    def generate_aes_key(self):
+        """ Generate a cryptographically secure AES key. """
+        return secrets.token_bytes(32)
+
     # AES Based Cryptographic Methods 
 
     def aes_encrypt_str(self, text, key):
-        return aes_encrypt_bytes(text.encode('ascii'), key, iv).decode('ascii')
+        cipher, iv = self.aes_encrypt_bytes(text.encode('ascii'), key)
+        return cipher.decode('ascii'), iv
     
     def aes_encrypt_bytes(self, text, key):
         iv = Random.new().read(AES.block_size) # do I trust this? Maybe yes but maybe not
@@ -151,7 +160,7 @@ class Crypt():
         return cipher, iv
 
     def aes_decrypt_str(self, cipher, key, iv):
-        return aes_decrypt_bytes(cipher.encode('ascii'), key, iv).decode('ascii')
+        return self.aes_decrypt_bytes(cipher.encode('ascii'), key, iv).decode('ascii')
 
     def aes_decrypt_bytes(self, cipher, key, iv):
         decryptor = AES.new(key, AES.MODE_CFB, iv)
