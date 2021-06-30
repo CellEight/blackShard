@@ -449,31 +449,29 @@ class Terminal:
         elif not note_name in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
             return None
-        note_path = self.get_note(self.pwd['notes'][note_name])
+        note_path, aes_key = self.get_note(self.pwd['notes'][note_name])
         if note_path:
-            with open(note_path, 'w') as note_fd:
-                note_fd.write(note)
             os.system(f"{self.config.text_editor} {note_path}")
             print(f"[*] Read note {note_name}.")
-            return note_path, aes_key 
+            return note_path, aes_key
         else:
             print(f"[!] Could not get note {note_name} from server.")
             return None 
     
-    def edit_note(self, note_id):
+    def edit_note(self, note_name):
         """ Read a file with read() and then send any updates back to the server. """
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         # priv check here
-        elif not note_id in self.pwd['notes']:
+        elif not note_name in self.pwd['notes']:
             print(f"[*] No note of this name exist at current location.")
             return False
-        note_path, aes_key = self.read(note_id)
-        if self.update_note(note_path, aes_key):
-            print(f"[*] Note '{note_id}' was successfully updated.")
+        note_path, aes_key = self.read_note(note_name)
+        if self.update_note(self.pwd['notes'][note_name], note_path, aes_key):
+            print(f"[*] Note '{note_name}' was successfully updated.")
             return True
         else:
-            print(f"[*] Note '{note_id}' could not be updated.")
+            print(f"[*] Note '{note_name}' could not be updated.")
             return False 
 
     # save this till later, not very important 
@@ -483,38 +481,38 @@ class Terminal:
             return False
         pass
 
-    def rm_note(self, note_name):
+    def rm_note(self, note_id):
         """ Delete a specified note on the server. """
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         # check priv
-        elif not note_name in self.pwd['notes']:
-            print(f"[*] No note of this name exist at current location.")
-            return False
-        elif self.net.rm_note(self.pwd['notes'][note_name]):
-            print("[*] Note {note_name} deleted.")
+        elif self.net.rm_note(note_id):
+            print(f"[*] Note {note_id} deleted.")
             return True
         else:
-            print("[!] Could not delete note {note_name}.")
+            print(f"[!] Could not delete note {note_id}.")
     
     def get_note(self, note_id):
         """ Get note from server, decrypt and save in temp file. """
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         cipher, enc_aes_key, iv = self.net.get_note(note_id)
+        print(cipher)
+        print(enc_aes_key)
+        print(iv)
         if cipher and enc_aes_key and iv:
-            aes_key = self.crypto.rsa_decrypt_str(enc_aes_key)
-            note = self.crypto.aes_decrypt(cipher, aes_key, iv)
+            aes_key = self.crypto.rsa_decrypt_bytes(enc_aes_key)
+            note = self.crypto.aes_decrypt_bytes(cipher, aes_key, iv).decode('ascii')
             note_path = self.create_temp()
             with open(note_path, 'w') as note_fd:
                 note_fd.write(note)
-            return note_path
+            return note_path, aes_key
         else:
-            return None
+            return None, None
 
     def edit_local_note(self, note_path):
         """ Open local copy of a note in the system text editor. """
-        os.system(f'{self.config.text_editor} {note_path}]')
+        os.system(f'{self.config.text_editor} {note_path}')
         
 
     def update_note(self, note_id, note_path, aes_key):
@@ -523,6 +521,7 @@ class Terminal:
             return False
         with open(note_path, 'r') as note_fd:
             note =  note_fd.read()
+        print("update: ",note)
         cipher, iv = self.crypto.aes_encrypt_str(note, aes_key)
         if self.net.update_note(note_id, cipher, iv):
             print(f"[*] Note was saved to server with id {note_id}.")
@@ -534,6 +533,7 @@ class Terminal:
     def create_temp(self):
         """ Create a temporary file in the systems /tmp directory """
         temp_path = subprocess.run(['mktemp'], stdout=subprocess.PIPE).stdout.decode('ascii')[:-1]
+        print("temp_path")
         return temp_path
 
 

@@ -42,7 +42,7 @@ class Session():
             elif cmd[0] == "update_note":
                 return self.update_note(cmd[1])
             elif cmd[0] == "rm_note":
-                return self.update_note(cmd[1])
+                return self.rm_note(cmd[1])
             elif cmd[0] == "check_priv":
                 return self.check_priv(cmd[1])
         elif len(cmd) == 3:
@@ -218,15 +218,16 @@ class Session():
 
     def get_note(self, note_id):
         """ Retrieve a note and send it back to the user. """
+        note_id = ObjectId(note_id)
         if not self.valid_command():
             return True
         # check priv
-        note_dict = self.db.get_note(note_id)
-        if note_dict:
+        note = self.db.get_note(note_id)
+        if note:
             self.connection.send_response(True)
-            self.connection.send_str_data(note['cipher'])
-            self.connection.send_str_data(note['aes_keys'][self.user['username']])
-            self.connection.send_str_data(note['iv'])
+            self.connection.send_raw_data(note['cipher'])
+            self.connection.send_raw_data(note['enc_aes_keys'][self.user['username']])
+            self.connection.send_raw_data(note['iv'])
             print(f"[*] User {self.user['username']} got note {note['note_name']}.")
         else:
             self.response(False)
@@ -242,8 +243,8 @@ class Session():
         note_dict = self.db.get_note(note_id)
         if note_dict:
             self.connection.send_response(True)
-            cipher = self.connection.get_str_data()
-            iv = self.connection.get_str_data()
+            cipher = self.connection.get_raw_data()
+            iv = self.connection.get_raw_data()
             if self.db.update_note(note_id, cipher, iv):
                 self.connection.send_response(True)
                 print(f"[*] User {self.user['username']} updated note with id {note_id}.")
@@ -256,15 +257,16 @@ class Session():
 
     def rm_note(self, note_id):
         """ Delete the specified note. """
+        note_id = ObjectId(note_id)
         if not self.valid_command():
             return True
         #check_priv
-        if self.db.delete_note(note_id):
+        if self.db.rm_note(note_id):
             self.connection.send_response(True)
-            print("[*] User {self.user['username']} delete note with id {note_id}.")
+            print(f"[*] User {self.user['username']} delete note with id {note_id}.")
         else:
             self.connection.send_response(False)
-            print("[!] User {self.user['username']} failed to delete note with id {note_id}.")
+            print(f"[!] User {self.user['username']} failed to delete note with id {note_id}.")
         return True
 
     # will I even use a method for this?

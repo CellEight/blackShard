@@ -178,9 +178,10 @@ class Network:
     def get_note(self, note_id):
         """ Ask the server to retrieve a specific note. """
         if self.send_cmd(f'get_note {note_id}') and self.get_response():
-            cipher = self.get_str_data()
-            enc_aes_key = self.get_str_data
-            iv = self.get_str_data()
+            cipher = self.get_raw_data()
+            enc_aes_key = self.get_raw_data()
+            iv = self.get_raw_data()
+            print(type(cipher),cipher)
             return cipher, enc_aes_key, iv
         else:
             return None, None
@@ -188,14 +189,14 @@ class Network:
     def update_note(self, note_id, cipher, iv):
         """ Ask the server to update the contents of a note. """
         if self.send_cmd(f'update_note {note_id}') and self.get_response():
-            self.send_str_data(cipher)
+            self.send_raw_data(cipher)
             self.send_raw_data(iv)
             if self.get_response():
                 return True
             else:
                 return False
             
-    def delete_note(self, note_id):
+    def rm_note(self, note_id):
         """ Ask the sever to delete specific note. """
         if self.send_cmd(f'rm_note {note_id}') and self.get_response():
             return True
