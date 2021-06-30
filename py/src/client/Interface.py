@@ -359,8 +359,8 @@ class Terminal:
         print('')
         print("Notes")
         print("--------------------")
-        for note in self.pwd['notes'].values():
-            print(note)
+        for note in self.pwd['notes'].items():
+            print(note[0],'\t',note[1])
         print('')
         print("Directories")
         print("--------------------")
@@ -426,12 +426,13 @@ class Terminal:
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         # priv check here
-        elif note_name in self.pwd['notes'] or note_name in self.pwd['subdirs']:
+        elif (note_name in self.pwd['notes']) or (note_name in self.pwd['subdirs']):
             print("[*] A note or directory of the same name already exists at this location.")
             return False
         note_path = self.create_temp()  
         self.edit_local_note(note_path)
-        enc_aes_key = self.crypto.rsa_encrypt_str(self.crypto.generate_aes_key())
+        aes_key = self.crypto.generate_aes_key()
+        enc_aes_key = self.crypto.rsa_encrypt_bytes(aes_key)
         note_id = self.net.create_note(note_name, enc_aes_key, self.pwd['_id'])
         if note_id and self.update_note(note_id, note_path, aes_key):
             print(f"[*] Created note {note_name} in {self.pwd['dir_name']}.")
@@ -498,6 +499,8 @@ class Terminal:
     
     def get_note(self, note_id):
         """ Get note from server, decrypt and save in temp file. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
         cipher, enc_aes_key, iv = self.net.get_note(note_id)
         if cipher and enc_aes_key and iv:
             aes_key = self.crypto.rsa_decrypt_str(enc_aes_key)
@@ -509,14 +512,15 @@ class Terminal:
         else:
             return None
 
-
     def edit_local_note(self, note_path):
         """ Open local copy of a note in the system text editor. """
         os.system(f'{self.config.text_editor} {note_path}]')
         
 
-    def update_note(note_id, note_path, aes_key):
+    def update_note(self, note_id, note_path, aes_key):
         """ Encrypt note using AES and send to server. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
         with open(note_path, 'r') as note_fd:
             note =  note_fd.read()
         cipher, iv = self.crypto.aes_encrypt_str(note, aes_key)
@@ -529,7 +533,7 @@ class Terminal:
 
     def create_temp(self):
         """ Create a temporary file in the systems /tmp directory """
-        temp_path = subprocess.run(['mktemp'], stdout=subprocess.PIPE).stdout
+        temp_path = subprocess.run(['mktemp'], stdout=subprocess.PIPE).stdout.decode('ascii')[:-1]
         return temp_path
 
 

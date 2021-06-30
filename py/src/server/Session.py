@@ -193,22 +193,25 @@ class Session():
     def create_note(self, note_name, dir_id):
         """ Create a new empty note object in the specified directory. """
         dir_id = ObjectId(dir_id)
-        _dir = self.db.get_dir()
+        _dir = self.db.get_dir(dir_id)
         if not self.valid_command():
             return True
-        elif (not _dir) or note_name in _dir['notes'] or note_name in _dir['subdirs']:
+        elif (not _dir) or (note_name in _dir['notes']) or (note_name in _dir['subdirs']):
+            print("Sent response False`")
             self.connection.send_response(False)
             return True
         # check priv
         else:
             self.connection.send_response(True) 
-            enc_aes_key = self.connection.get_str_data()
-            note_id = self.db.create_note(note_name, enc_aes_key, dir_id)
+            enc_aes_key = self.connection.get_raw_data()
+            note_id = self.db.create_note(note_name, enc_aes_key, dir_id, self.user['username'])
             if note_id:
                 self.connection.send_response(True)
+                self.connection.send_str_data(note_id)
                 print(f"[*] New note {note_name} created in directory with id {dir_id}.")
                 return True
             else:
+                self.connection.send_response(False)
                 print("[*] Could not create create dir, db refused.")
                 return True
 
@@ -232,6 +235,7 @@ class Session():
 
     def update_note(self, note_id):
         """ Update the content of a note. """
+        note_id = ObjectId(note_id)
         if not self.valid_command():
             return True
         # check_priv
