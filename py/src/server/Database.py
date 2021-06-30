@@ -80,7 +80,11 @@ class Database():
     def rm_note(self, note_id):
         """ Delete the specified note form database """
         try:
-            self.notes.delete_one({'_id':note_id})
+            note = self.get_note(note_id)
+            result_1 = self.dirs.update_one({'_id':note['dir_id']},{'$unset':{'notes.'+note['note_name']:''}})
+            result_2 = self.notes.delete_one({'_id':note_id})
+            print("Dir update: ",result_1.modified_count)
+            print("Delted: ",result_2.deleted_count)
             print(f"[*] Deleted note {note_id}.")
             return True
         except Exception as e:

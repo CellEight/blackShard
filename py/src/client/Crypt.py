@@ -150,8 +150,12 @@ class Crypt():
     # AES Based Cryptographic Methods 
 
     def aes_encrypt_str(self, text, key):
+        print(text)
+        print(key)
         cipher, iv = self.aes_encrypt_bytes(text.encode('ascii'), key)
-        return cipher.decode('ascii'), iv
+        print(type(cipher),cipher)
+        print(type(iv),iv)
+        return cipher, iv
     
     def aes_encrypt_bytes(self, text, key):
         iv = Random.new().read(AES.block_size) # do I trust this? Maybe yes but maybe not
