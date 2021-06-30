@@ -141,14 +141,13 @@ class Crypt():
 
     # AES Based Cryptographic Methods 
 
-    def aes_encrypt_str(self, text, key, iv=None):
+    def aes_encrypt_str(self, text, key):
         return aes_encrypt_bytes(text.encode('ascii'), key, iv).decode('ascii')
     
-    def aes_encrypt_bytes(self, text, key, iv=None):
-        if not iv:
-            iv = Random.new().read(AES.block_size) # do I trust this? Maybe yes but maybe not
+    def aes_encrypt_bytes(self, text, key):
+        iv = Random.new().read(AES.block_size) # do I trust this? Maybe yes but maybe not
         encryptor = AES.new(key, AES.MODE_CFB, iv)
-        cipher = iv + encryptor.encrypt(text)
+        cipher = encryptor.encrypt(text)
         return cipher, iv
 
     def aes_decrypt_str(self, cipher, key, iv):
@@ -156,5 +155,5 @@ class Crypt():
 
     def aes_decrypt_bytes(self, cipher, key, iv):
         decryptor = AES.new(key, AES.MODE_CFB, iv)
-        text = decryptor.decrypt(cipher - iv)
+        text = decryptor.decrypt(cipher)
         return text
