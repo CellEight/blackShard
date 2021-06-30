@@ -28,6 +28,7 @@ class Handler():
         while True:
             connection = net.listen_for_client()
             if connection:
+                connection.send_str_data(str(self.db.get_init_pwd_id()))
                 self.create_thread(connection)
             else:
                 print("[!] Connection was Null? Something funky is going on.")
