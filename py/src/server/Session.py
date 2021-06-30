@@ -267,4 +267,3 @@ class Session():
     def check_priv(self, obj):
         if not self.valid_command():
             return True
-        pass
