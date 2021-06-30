@@ -190,26 +190,80 @@ class Session():
 
     # Note Management Methods 
 
-    def create_note(self, note):
+    def create_note(self, note_name, dir_id):
+        """ Create a new empty note object in the specified directory. """
+        dir_id = ObjectId(dir_id)
+        _dir = self.db.get_dir()
         if not self.valid_command():
             return True
-        pass
+        elif (not _dir) or note_name in _dir['notes'] or note_name in _dir['subdirs']:
+            self.connection.send_response(False)
+            return True
+        # check priv
+        else:
+            self.connection.send_response(True) 
+            enc_aes_key = self.connection.get_str_data()
+            note_id = self.db.create_note(note_name, enc_aes_key, dir_id))
+            if note_id:
+                self.connection.send_response(True)
+                print(f"[*] New note {note_name} created in directory with id {dir_id}.")
+                return True
+            else:
+                print("[*] Could not create create dir, db refused.")
+                return True
 
-    def get_note(self, note):
+
+    def get_note(self, note_id):
+        """ Retrieve a note and send it back to the user. """
         if not self.valid_command():
             return True
-        pass
+        # check priv
+        note_dict = self.db.get_note(note_id)
+        if note_dict:
+            self.connection.send_response(True)
+            self.connection.send_str_data(note['cipher'])
+            self.connection.send_str_data(note['aes_keys'][self.user['username']])
+            self.connection.send_str_data(note['iv'])
+            print(f"[*] User {self.user['username']} got note {note['note_name']}.")
+        else:
+            self.response(False)
+            print(f"[!] User {self.user['username']} failed to get note {note['note_name']}.")
+        return True
 
-    def update_note(self, note):
+    def update_note(self, note_id):
+        """ Update the content of a note. """
         if not self.valid_command():
             return True
-        pass
+        # check_priv
+        note_dict = self.db.get_note(note_id)
+        if note_dict:
+            self.connection.send_response(True)
+            cipher = self.connection.get_str_data()
+            iv = self.connection.get_str_data()
+            if self.db.update_note(note_id, cipher, iv):
+                self.connection.send_response(True)
+            print(f"[*] User {self.user['username']} updated note with id {note_id}.")
+            else:
+                self.connection.send_response(False)
+                print(f"[!] User {self.user['username']} failed to update note with id {note_id}.")
+        else:
+            self.connection.send_response(False)
+        return True
 
-    def delete_note(self, note):
+    def delete_note(self, note_id):
+        """ Delete the specified note. """
         if not self.valid_command():
             return True
-        pass
+        #check_priv
+        if self.db.delete_note(note_id):
+            self.connection.send_response(True)
+            print("[*] User {self.user['username']} delete note with id {note_id}.")
+        else:
+            self.connection.send_response(False)
+            print("[!] User {self.user['username']} failed to delete note with id {note_id}.")
+        return True
 
+    # will I even use a method for this?
     def check_priv(self, obj):
         if not self.valid_command():
             return True

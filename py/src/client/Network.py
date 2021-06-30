@@ -163,11 +163,15 @@ class Network:
 
     # Note Methods
 
-    def create_note(self, note_name, dir_id):
+    def create_note(self, note_name, enc_aes_key, dir_id):
         """ Ask the server to create a new note in the specified directory 
             with the specified name. """
         if self.send_cmd(f'create_note {note_name} {dir_id}') and self.get_response():
-            return self.get_str_data() # get the note_id
+            self.send_str_data(enc_aes_key):
+            if self.get_response()
+                return self.get_str_data() # get the note_id
+            else:
+                return None
         else:
             return None
 
@@ -198,7 +202,6 @@ class Network:
             return True
         else:
             return False
-
 
     # Transmission Methods
     
