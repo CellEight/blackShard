@@ -16,7 +16,7 @@ class Database():
         self.dirs = self.db.dirs
         self.notes = self.db.notes
 
-    # Crud for user, note and location objects
+    # User Management Methods 
     
     def create_user(self,username,public_key):
         user = {"username":username, "public_key":public_key}
@@ -29,17 +29,63 @@ class Database():
             print("[!] Failed to create user.")
             return None
 
-    def create_note(self, note_name ,note_content, dir_id):
-        now  = datetime.datetime.utcnow()
-        note = {"note_name":note_name,"note_content":note_content,"dir_id":dir_id,"created":now,"last_updated":now} 
+    def get_user(self, username):
+        """ Queries the database for a given user. Returns user object 
+            if user exists or None if they do not. """
+        return self.users.find_one({"username":username})
+
+    def delete_user(self, username):
+        """ Ask the database to delete the with the specified username."""
         try:
-            self.notes.insert_one(note)
-            print("[*] Created note.")
+            self.users.delete_one({'username':username})
+            print(f"[*] Deleted User {username}.")
             return True
         except Exception as e:
             print(e)
-            print("[!] Failed to create note.")
+            print(f"[!] Failed to delete user {username}.")
             return False
+
+    # Note Management Methods
+
+    def create_note(self, note_name, enc_aes_key, dir_id, username):
+        """ Created a new empty note with the creators encrypted aes key stored within. """
+        now  = datetime.datetime.utcnow()
+        note = {"note_name":note_name,"dir_id":dir_id,"enc_aes_keys":{username:enc_aes_key},"iv":"","cipher":"","created":now,"last_updated":now} 
+        try:
+            result = self.notes.insert_one(note)
+            return result.inserted_id
+        except Exception as e:
+            print(e)
+            return None
+
+    def get_note(self, note_id):
+        """ Queries the database for a given note. Returns note dictionary
+            if note exists or None if it does not."""
+        return self.notes.find_one({"_id":note_id})
+
+    def update_note(note_id, cipher, iv):
+        """ Update the cipher text, iv and timestamp of the specified note. """
+        now  = datetime.datetime.utcnow()
+        try:
+            # maybe get the returned object here to see if it really worked?
+            self.notes.update_one({'_id':note_id}, {'$set':{'cipher':cipher, 'iv':iv, 'last_updated':now}})
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def rm_note(self, note_id):
+        """ Delete the specified note form database """
+        try:
+            self.notes.delete_one({'_id':note_id})
+            print(f"[*] Deleted note {note_id}.")
+            return True
+        except Exception as e:
+            print(e)
+            print("[!] Failed to delete note {note_id}.")
+            return False
+
+    # Directory Management Methods
     
     def mkdir(self, dir_name, parent_id, user_id):
         # should owners/users be lists or a dicts
@@ -53,16 +99,6 @@ class Database():
             print(e)
             print("[!] Failed to create directory.")
             return False
-
-    def get_user(self, username):
-        """ Queries the database for a given user. Returns user object 
-            if user exists or None if they do not. """
-        return self.users.find_one({"username":username})
-
-    def get_note(self, note_id):
-        """ Queries the database for a given note. Returns note dictionary
-            if note exists or None if it does not."""
-        return self.notes.find_one({"_id":note_id})
 
     def get_dir(self, dir_id):
         """ Queries the database for a given directory. Returns directory dictionary 
@@ -84,26 +120,6 @@ class Database():
         else:
             print("[!] Oh dear! You don't seem to have a root directory. Did you set up the Database?")
             return None
-
-    def delete_user(self, username):
-        try:
-            self.users.delete_one({'username':username})
-            print(f"[*] Deleted User {username}.")
-            return True
-        except Exception as e:
-            print(e)
-            print(f"[!] Failed to delete user {username}.")
-            return False
-
-    def delete_note(self, note_id):
-        try:
-            self.notes.delete_one(note_id)
-            print(f"[*] Deleted note {note_id}.")
-            return True
-        except Exception as e:
-            print(e)
-            print("[!] Failed to delete note {note_id}.")
-            return False
 
     def rm_dir(self, dir_id):
         try:
