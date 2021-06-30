@@ -41,15 +41,15 @@ class Session():
                 return self.get_note(cmd[1])
             elif cmd[0] == "update_note":
                 return self.update_note(cmd[1])
-            elif cmd[0] == "delete_note":
+            elif cmd[0] == "rm_note":
                 return self.update_note(cmd[1])
-            elif cmd[0] == "create_note":
-                return self.create_note(cmd[1])
             elif cmd[0] == "check_priv":
                 return self.check_priv(cmd[1])
         elif len(cmd) == 3:
             if cmd[0] == "mkdir":
                 return self.mkdir(cmd[1], cmd[2])
+            elif cmd[0] == "create_note":
+                return self.create_note(cmd[1], cmd[2])
         return self.invalid_command()
     
     #implement a disconnect method
