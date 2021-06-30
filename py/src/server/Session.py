@@ -203,7 +203,7 @@ class Session():
         else:
             self.connection.send_response(True) 
             enc_aes_key = self.connection.get_str_data()
-            note_id = self.db.create_note(note_name, enc_aes_key, dir_id))
+            note_id = self.db.create_note(note_name, enc_aes_key, dir_id)
             if note_id:
                 self.connection.send_response(True)
                 print(f"[*] New note {note_name} created in directory with id {dir_id}.")
@@ -242,7 +242,7 @@ class Session():
             iv = self.connection.get_str_data()
             if self.db.update_note(note_id, cipher, iv):
                 self.connection.send_response(True)
-            print(f"[*] User {self.user['username']} updated note with id {note_id}.")
+                print(f"[*] User {self.user['username']} updated note with id {note_id}.")
             else:
                 self.connection.send_response(False)
                 print(f"[!] User {self.user['username']} failed to update note with id {note_id}.")
@@ -250,7 +250,7 @@ class Session():
             self.connection.send_response(False)
         return True
 
-    def delete_note(self, note_id):
+    def rm_note(self, note_id):
         """ Delete the specified note. """
         if not self.valid_command():
             return True

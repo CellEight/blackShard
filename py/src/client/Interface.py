@@ -127,19 +127,19 @@ class Terminal:
                 return self.mkdir(cmd[1])
             elif cmd[0] == 'cd':
                 return self.cd(cmd[1])
+            elif cmd[0] == 'create_note':
+                return self.create_note(cmd[1])
             elif cmd[0] == 'read':
-                return self.read(cmd[1])
+                return self.read_note(cmd[1])
             elif cmd[0] == 'edit':
-                return self.edit(cmd[1])
+                return self.edit_note(cmd[1])
             elif cmd[0] == 'rm':
                 return self.rm(cmd[1])
             # will implement later
             #elif cmd[0] == 'import-keys':
             #    return self.crypto.import_keypair(cmd[1])
         elif len(cmd) == 3:
-            if cmd[0] == 'create' and cmd[1] == 'note':
-                return self.create_note(cmd[2])
-            elif cmd[0] == "rm" and cmd[1] == "recursive":
+            if cmd[0] == "rm" and cmd[1] == "recursive":
                 return self.rm(cmd[2],recursive=True)
         print('[!] Not a valid command! Type "help" for a list of commands')
 
@@ -431,7 +431,7 @@ class Terminal:
             return False
         note_path = self.create_temp()  
         self.edit_local_note(note_path)
-        enc_aes_key = self.crypto.rsa_encrypt(self.crypto.generate_aes_key())
+        enc_aes_key = self.crypto.rsa_encrypt_str(self.crypto.generate_aes_key())
         note_id = self.net.create_note(note_name, enc_aes_key, self.pwd['_id'])
         if note_id and self.update_note(note_id, note_path, aes_key):
             print(f"[*] Created note {note_name} in {self.pwd['dir_name']}.")

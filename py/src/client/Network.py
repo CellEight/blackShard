@@ -122,13 +122,12 @@ class Network:
     
     def mkdir(self, dir_name, pwd_id):
         """ Ask the server to create a directory in the specified pwd. """
+        if self.send_cmd(f'mkdir {dir_name} {pwd_id}') and self.get_response():
+            print(f"[*] Directory {dir_name} created in present working directory.")
+            return True
         else:
-            if self.send_cmd(f'mkdir {dir_name} {pwd_id}') and self.get_response():
-                print(f"[*] Directory {dir_name} created in present working directory.")
-                return True
-            else:
-                print(f"[!] Could not create directory {dir_name}.")
-                return False
+            print(f"[!] Could not create directory {dir_name}.")
+            return False
 
     def get_dir(self, dir_id):
         """ Ask the server for a directories dictionary. """
@@ -167,8 +166,8 @@ class Network:
         """ Ask the server to create a new note in the specified directory 
             with the specified name. """
         if self.send_cmd(f'create_note {note_name} {dir_id}') and self.get_response():
-            self.send_str_data(enc_aes_key):
-            if self.get_response()
+            self.send_str_data(enc_aes_key)
+            if self.get_response():
                 return self.get_str_data() # get the note_id
             else:
                 return None
