@@ -17,9 +17,9 @@ class Connection():
         return cmd
     
     def send_str_data(self, data):
-        return self.send_raw_data(data.encode('ascii'))
+        return self.send_byte_data(data.encode('ascii'))
 
-    def send_raw_data(self, data):
+    def send_byte_data(self, data):
         """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
         print(data)
         try:
@@ -30,9 +30,9 @@ class Connection():
             return False
 
     def get_str_data(self):
-        return self.get_raw_data().decode('ascii')
+        return self.get_byte_data().decode('ascii')
 
-    def get_raw_data(self):
+    def get_byte_data(self):
         data = self.connection.recv(16384)
         print(data)
         return data

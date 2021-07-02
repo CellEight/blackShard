@@ -30,12 +30,13 @@ class Network:
             if self.create_socket():
                 return self.get_str_data()
             else:
+                self.server_ip = self.server_port = self.socket = None
                 return None
         except Exception as e:
             self.server_ip = self.server_port = self.socket = None
             print(e)
             print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
-            return False
+            return None
 
     def disconnect(self):
         """ Coordinate disconnect of the client from the server. """

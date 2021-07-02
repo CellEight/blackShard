@@ -356,6 +356,7 @@ class Terminal:
         # algorithmic foibles for now.
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
+        self.pwd = self.net.get_dir(self.pwd['_id'])
         print('')
         print("Notes")
         print("--------------------")

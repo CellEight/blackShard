@@ -1,0 +1,4 @@
+py/certs/*
+py/src/client/__pycache__
+py/src/server/__pycache__
+

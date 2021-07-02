@@ -112,11 +112,12 @@ class Session():
 
     def register(self, username):
         # add exception handling
+        # This function 
         if not self.valid_command():
             return True
         public_key = self.connection.get_str_data()
         self.connection.send_response(self.db.create_user(username, public_key))
-        self.user = self.db.get_user(username)
+        self.user = self:.db.get_user(username)
         return True
 
     def unregister(self, username):
