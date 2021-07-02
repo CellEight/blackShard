@@ -30,13 +30,20 @@ class Network:
             if self.create_socket():
                 return self.get_str_data()
             else:
+<<<<<<< HEAD
                 self.server_ip = self.server_port = self.socket = None
+=======
+>>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
                 return None
         except Exception as e:
             self.server_ip = self.server_port = self.socket = None
             print(e)
             print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
+<<<<<<< HEAD
             return None
+=======
+            return False
+>>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
 
     def disconnect(self):
         """ Coordinate disconnect of the client from the server. """
@@ -237,10 +244,17 @@ class Network:
             return False
 
     # All of these functions need exception handling as well as debug messages
+<<<<<<< HEAD
 
     def get_str_data(self):
         return self.get_raw_data().decode('ascii')
 
+=======
+
+    def get_str_data(self):
+        return self.get_raw_data().decode('ascii')
+
+>>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
     def get_raw_data(self):
         data = self.socket.recv(16384)
         #print(data)
