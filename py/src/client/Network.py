@@ -30,20 +30,13 @@ class Network:
             if self.create_socket():
                 return self.get_str_data()
             else:
-<<<<<<< HEAD
                 self.server_ip = self.server_port = self.socket = None
-=======
->>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
                 return None
         except Exception as e:
             self.server_ip = self.server_port = self.socket = None
             print(e)
             print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
-<<<<<<< HEAD
             return None
-=======
-            return False
->>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
 
     def disconnect(self):
         """ Coordinate disconnect of the client from the server. """
@@ -88,14 +81,14 @@ class Network:
     def get_login_cipher(self, user):
         """ Contacts the server to initialize login process and receives cipher 
             text encoded using users public key in order to verify user identity. """
-        cipher = self.get_raw_data() 
+        cipher = self.get_byte_data() 
         print("[*] Login Challenge Received. Decoding and Responding")
         return cipher
 
     def send_login_response(self, response):
         """ Sends the deciphered challenge back to the server and 
             verifies response was valid. """
-        self.send_raw_data(response)
+        self.send_byte_data(response)
         if self.get_response():
             print("[*] Response Validated.")
             return True
@@ -174,7 +167,7 @@ class Network:
         """ Ask the server to create a new note in the specified directory 
             with the specified name. """
         if self.send_cmd(f'create_note {note_name} {dir_id}') and self.get_response():
-            self.send_raw_data(enc_aes_key)
+            self.send_byte_data(enc_aes_key)
             if self.get_response():
                 return self.get_str_data() # get the note_id
             else:
@@ -186,9 +179,9 @@ class Network:
     def get_note(self, note_id):
         """ Ask the server to retrieve a specific note. """
         if self.send_cmd(f'get_note {note_id}') and self.get_response():
-            cipher = self.get_raw_data()
-            enc_aes_key = self.get_raw_data()
-            iv = self.get_raw_data()
+            cipher = self.get_byte_data()
+            enc_aes_key = self.get_byte_data()
+            iv = self.get_byte_data()
             print(type(cipher),cipher)
             return cipher, enc_aes_key, iv
         else:
@@ -197,8 +190,8 @@ class Network:
     def update_note(self, note_id, cipher, iv):
         """ Ask the server to update the contents of a note. """
         if self.send_cmd(f'update_note {note_id}') and self.get_response():
-            self.send_raw_data(cipher)
-            self.send_raw_data(iv)
+            self.send_byte_data(cipher)
+            self.send_byte_data(iv)
             if self.get_response():
                 return True
             else:
@@ -231,9 +224,9 @@ class Network:
             return False
 
     def send_str_data(self, data):
-        return self.send_raw_data(data.encode('ascii'))
+        return self.send_byte_data(data.encode('ascii'))
 
-    def send_raw_data(self, data):
+    def send_byte_data(self, data):
         """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
         try:
             print(data)
@@ -244,18 +237,11 @@ class Network:
             return False
 
     # All of these functions need exception handling as well as debug messages
-<<<<<<< HEAD
 
     def get_str_data(self):
-        return self.get_raw_data().decode('ascii')
+        return self.get_byte_data().decode('ascii')
 
-=======
-
-    def get_str_data(self):
-        return self.get_raw_data().decode('ascii')
-
->>>>>>> eee8b9ecf435480d7642f86ea90d152d4494b5e6
-    def get_raw_data(self):
+    def get_byte_data(self):
         data = self.socket.recv(16384)
         #print(data)
         return data
