@@ -127,8 +127,6 @@ class Terminal:
                 return self.mkdir(cmd[1])
             elif cmd[0] == 'cd':
                 return self.cd(cmd[1])
-            elif cmd[0] == 'create_note':
-                return self.create_note(cmd[1])
             elif cmd[0] == 'read':
                 return self.read_note(cmd[1])
             elif cmd[0] == 'download':
@@ -145,31 +143,44 @@ class Terminal:
                 return self.rm(cmd[2],recursive=True)
             elif cmd[0] == "rename":
                 return self.rename(cmd[1], cmd[2])
+            elif cmd[0] == 'create' and cmd[1] == 'note':
+                return self.create_note(cmd[2])
         print('[!] Not a valid command! Type "help" for a list of commands')
 
     def help(self):
         """ Print help information """
-        # Need to add disconnect
-        print("----------Commands----------")
+        print("----------Commands----------\n")
+        
+        print("-------->Networking<--------\n")
+       
         print("connect <ip>:<port> - establish a connection to remote blackShard server.")
         print("disconnect - disconnect from the current server")
         print("login <user> - attempt to login to connected server as a given user.")
         print("logout - logout of current server.")
         print("register <user> - attempt to register a user on the connected server.")
         print("unregister <user> - attempt to delete user from the connected server.")
+        print('')
+        print("-------->Navigation<--------\n")
         print("ls - List contents of current directory on server.")
         print("cd <dir> - Change current directory to specified.")
+        print('')
+        print("------>Read and Write<------\n")
         print("read <note> - read specified note.")
         print("edit <note> - edit specified note.")
         print("create note <note> - create a new note.")
-        print("create dir <dir> - create a new note.")
-        print("delete <note> - delete specified note.")
+        print("mkdir <dir name> - Create a new directory in the present working directory.")
+        print("rm <note/dir> - delete specified note or directory.")
+        print("rename <note/dir> <new name> - Rename a note or directory")
+        print("download <note> - download the specified note to your current directory.")
+        print('')
         # will implement later
         #print("import-keys <path> [<ip> <user>]- import the key pair from file optionally specifying server and user")
+        print("------->Application<--------\n")
         print("list-keys - show a list of saved keys.")
         print("help - Prints this very message to the console.")
         print("motd - Displays the message of the day banner.")
         print("quit - Exits the program.")
+        print('')
 
     def quit(self):
         """ Exit the program and return to the shell """
