@@ -13,7 +13,10 @@ class Session():
     def listen_for_cmd(self):
         """ Listens for commands from clients and hands them off to be parsed. """
         cmd = self.connection.get_cmd()
-        return self.parse_cmd(cmd)
+        if not cmd:
+            return False
+        else:
+            return self.parse_cmd(cmd)
 
     def parse_cmd(self,cmd):
         """ Parse command acquired by listen_for_cmd and extract arguments and 
@@ -48,8 +51,12 @@ class Session():
         elif len(cmd) == 3:
             if cmd[0] == "mkdir":
                 return self.mkdir(cmd[1], cmd[2])
+            elif cmd[0] == "rename_dir":
+                return self.rename_dir(cmd[1], cmd[2])
             elif cmd[0] == "create_note":
                 return self.create_note(cmd[1], cmd[2])
+            elif cmd[0] == "rename_note":
+                return self.rename_note(cmd[1],cmd[2])
         return self.invalid_command()
     
     #implement a disconnect method
@@ -89,8 +96,8 @@ class Session():
             self.connection.send_response(True)
         self.crypto.load_user_public_key(user)
         challenge, cipher = self.crypto.generate_login_cipher()
-        self.connection.send_raw_data(cipher)
-        data = self.connection.get_raw_data()
+        self.connection.send_byte_data(cipher)
+        data = self.connection.get_byte_data()
         if challenge == data:
             self.user = user
             print(f"[*] User {user['username']} logged in.")
@@ -115,9 +122,12 @@ class Session():
         # This function 
         if not self.valid_command():
             return True
+        if '.' in username:
+            self.connection.send_response(False)
+            return True
         public_key = self.connection.get_str_data()
         self.connection.send_response(self.db.create_user(username, public_key))
-        self.user = self:.db.get_user(username)
+        self.user = self.db.get_user(username)
         return True
 
     def unregister(self, username):
@@ -147,6 +157,9 @@ class Session():
         pwd_id = ObjectId(pwd_id)
         if not self.valid_command():
             return True
+        if '.' in dir_name:
+            self.connection.send_response(False)
+            return True
         # verify privs
         # verify that file/folder not already present
         if self.db.mkdir(dir_name, pwd_id, self.user['_id']):
@@ -173,6 +186,24 @@ class Session():
         else:
             self.connection.send_response(False)
             return True
+    
+    def rename_dir(self, dir_id, new_dir_name):
+        """ Rename the specified dir. """
+        dir_id = ObjectId(dir_id)
+        if not self.valid_command():
+            return True
+        elif '.' in new_dir_name:
+            print(f"[!] User {self.user['username']} tried to update dir with invalid name {new_dir_name}")
+            return True
+        #check_priv
+        if self.db.rename_dir(dir_id, new_dir_name):
+            print(f"[*] Renamed dir with id {dir_id} to {new_dir_name}")
+            self.connection.send_response(True)
+            return True
+        else:
+            print(f"[!] Could not rename dir with id {dir_id} to {new_dir_name}")
+            self.connection.send_response(False)
+            return True
 
     def rm_dir(self, dir_id):
         """ Ask the database to delete the specified directory. """
@@ -197,6 +228,9 @@ class Session():
         _dir = self.db.get_dir(dir_id)
         if not self.valid_command():
             return True
+        if '.' in note_name:
+            self.connection.send_response(False)
+            return True
         elif (not _dir) or (note_name in _dir['notes']) or (note_name in _dir['subdirs']):
             print("Sent response False`")
             self.connection.send_response(False)
@@ -204,7 +238,7 @@ class Session():
         # check priv
         else:
             self.connection.send_response(True) 
-            enc_aes_key = self.connection.get_raw_data()
+            enc_aes_key = self.connection.get_byte_data()
             note_id = self.db.create_note(note_name, enc_aes_key, dir_id, self.user['username'])
             if note_id:
                 self.connection.send_response(True)
@@ -226,9 +260,9 @@ class Session():
         note = self.db.get_note(note_id)
         if note:
             self.connection.send_response(True)
-            self.connection.send_raw_data(note['cipher'])
-            self.connection.send_raw_data(note['enc_aes_keys'][self.user['username']])
-            self.connection.send_raw_data(note['iv'])
+            self.connection.send_byte_data(note['cipher'])
+            self.connection.send_byte_data(note['enc_aes_keys'][self.user['username']])
+            self.connection.send_byte_data(note['iv'])
             print(f"[*] User {self.user['username']} got note {note['note_name']}.")
         else:
             self.response(False)
@@ -244,8 +278,8 @@ class Session():
         note_dict = self.db.get_note(note_id)
         if note_dict:
             self.connection.send_response(True)
-            cipher = self.connection.get_raw_data()
-            iv = self.connection.get_raw_data()
+            cipher = self.connection.get_byte_data()
+            iv = self.connection.get_byte_data()
             if self.db.update_note(note_id, cipher, iv):
                 self.connection.send_response(True)
                 print(f"[*] User {self.user['username']} updated note with id {note_id}.")
@@ -255,6 +289,26 @@ class Session():
         else:
             self.connection.send_response(False)
         return True
+
+    def rename_note(self, note_id, new_note_name):
+        """ Rename the specified note. """
+        note_id = ObjectId(note_id)
+        if not self.valid_command():
+            return True
+        elif '.' in new_note_name:
+            print(f"[!] User {self.user['username']} tried to update note with invalid name {new_note_name}")
+            return True
+        #check_priv
+        if self.db.rename_note(note_id, new_note_name):
+            print(f"[*] Renamed note with id {note_id} to {new_note_name}")
+            self.connection.send_response(True)
+            return True
+        else:
+            print(f"[!] Could not rename note with id {note_id} to {new_note_name}")
+            self.connection.send_response(False)
+            return True
+
+
 
     def rm_note(self, note_id):
         """ Delete the specified note. """

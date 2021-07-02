@@ -33,9 +33,9 @@ class Network:
                 self.server_ip = self.server_port = self.socket = None
                 return None
         except Exception as e:
+            print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
             self.server_ip = self.server_port = self.socket = None
             print(e)
-            print(f"[!] Failed to connect to {self.server_ip}:{self.server_port}")
             return None
 
     def disconnect(self):
@@ -58,7 +58,7 @@ class Network:
         self.socket = self.context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),server_hostname=self.server_ip)
         try:
             self.socket.connect((self.server_ip, self.server_port))
-            header = self.socket.recv(1024).decode("ascii")
+            header = self.get_str_data()
         except Exception as e:
             print(e)
             print("[!] Could not establish connection.")
@@ -143,8 +143,18 @@ class Network:
             print("[!] Could not retrieve directory information.")
             return None
 
-    def rename_directory(self, dir_id, new_dim_name):
-        pass
+    def rename_dir(self, dir_id, new_dir_name):
+        try:
+            if self.send_cmd(f'rename_dir {dir_id} {new_dir_name}') and self.get_response():
+                print(f"[*] Renamed directory with id {dir_id}.")
+                return True
+            else:
+                print(f"[!] Could not rename directory with id {dir_id}.")
+                return False
+        except Exception as e:
+            print(e)
+            print(f"[!] Could not rename directory with id {dir_id}.")
+            return False
 
     def rm_dir(self, dir_id):
         """ Ask the server to delete the directory with the given id. """
@@ -196,6 +206,19 @@ class Network:
                 return True
             else:
                 return False
+    
+    def rename_note(self, note_id, new_note_name):
+        try:
+            if self.send_cmd(f'rename_note {note_id} {new_note_name}') and self.get_response():
+                print(f"[*] Renamed note with id {note_id}.")
+                return True
+            else:
+                print(f"[!] Could not rename note with id {note_id}.")
+                return False
+        except Exception as e:
+            print(e)
+            print(f"[!] Could not rename note with id {note_id}.")
+            return False
             
     def rm_note(self, note_id):
         """ Ask the sever to delete specific note. """
@@ -228,9 +251,14 @@ class Network:
 
     def send_byte_data(self, data):
         """ Send a large block of data to the server such as a public key (send_cmd redundant?))"""
+        data_len = len(data)
+        print("Data is of length ",)
+        n_blocks = int(data_len//1024 if data_len//1024 == data_len/1024 else data_len//1024 + 1) # get rid of 1024, magic number
+        print("Data is ",n_blocks," block in length")
         try:
-            print(data)
-            self.socket.send(data)
+            self.socket.send(str(n_blocks).encode('ascii'))
+            for i in range(n_blocks):
+                self.socket.send(data[i*1024:(i+1)*1024])
             return True
         except Exception as e:
             print(e)
@@ -242,8 +270,14 @@ class Network:
         return self.get_byte_data().decode('ascii')
 
     def get_byte_data(self):
-        data = self.socket.recv(16384)
-        #print(data)
+        # add exception handling
+        print("Getting data")
+        n_blocks = int(self.socket.recv(1024).decode('ascii'))
+        print("Data is ", n_blocks, " blocks in length.")
+        data = b''
+        for i in range(n_blocks): 
+            data += self.socket.recv(1024)
+        print(data)
         return data
 
     def get_response(self):

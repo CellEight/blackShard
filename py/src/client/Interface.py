@@ -131,6 +131,8 @@ class Terminal:
                 return self.create_note(cmd[1])
             elif cmd[0] == 'read':
                 return self.read_note(cmd[1])
+            elif cmd[0] == 'download':
+                return self.download(cmd[1])
             elif cmd[0] == 'edit':
                 return self.edit_note(cmd[1])
             elif cmd[0] == 'rm':
@@ -141,6 +143,8 @@ class Terminal:
         elif len(cmd) == 3:
             if cmd[0] == "rm" and cmd[1] == "recursive":
                 return self.rm(cmd[2],recursive=True)
+            elif cmd[0] == "rename":
+                return self.rename(cmd[1], cmd[2])
         print('[!] Not a valid command! Type "help" for a list of commands')
 
     def help(self):
@@ -250,7 +254,10 @@ class Terminal:
             new key pair and communicates the public key to the server ."""
         if not self.is_connected():
             return False
-        if self.net.check_privilages(None, 'g'): # g for reGister, I am deeply sorry
+        elif '.' in user:
+            print("[!] Usernames may not contain periods.")
+            return False
+        if True: #self.net.check_privilages(None, 'g'):  This is hogwash and not how I intend to implement privileges
             if self.crypto.generate_keypair(self.net.server_ip, user):
                 public_key = self.crypto.current_keypair.publickey().exportKey().decode('ascii')
                 if self.net.register(user, public_key):
@@ -297,8 +304,6 @@ class Terminal:
 
     # Common Note and Directory Methods
 
-    # Add checks that user is logged in
-
     def rm(self, item):
         """ Delete a note or a directory in the present working directory. """
         if (not self.is_connected()) or (not self.is_logged_in()):
@@ -316,9 +321,9 @@ class Terminal:
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
         if item in self.pwd['notes']:
-            return self.rename_note(self.pwd['notes'][item], new_item_name) 
+            return self.rename_note(item, self.pwd['notes'][item], new_item_name) 
         elif item in self.pwd['subdirs']:
-            return self.rename_directory(self.pwd['subdirs'][item], new_item_name) 
+            return self.rename_dir(item, self.pwd['subdirs'][item], new_item_name) 
         else:
             print("[!] No such note or directory exists in present location.")
             return False
@@ -333,6 +338,9 @@ class Terminal:
     def mkdir(self, dir_name):
         """ Create a new directory in the present working directory. """
         if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        elif '.' in dir_name:
+            print("[!] Directories names may not contain periods.")
             return False
         if (not dir_name in self.pwd['subdirs']) and (not dir_name in self.pwd['users']): 
             # priv check here
@@ -369,7 +377,6 @@ class Terminal:
             print(subdir[0],'\t',subdir[1])
         print('')
         return True
-    
 
     def cd(self, dir_name):
         """ Move to another directory. """
@@ -392,17 +399,19 @@ class Terminal:
         else:
             print(f"[!] Could not change directory to {dir_name}.")
             return False
-
-    def rename_dir(self, dir_id, new_dir_name):
+    
+    def rename_dir(self, dir_name, dir_id, new_dir_name):
         """ Update the name of a directory. """
         if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        elif '.' in dir_name:
+            print("[!] Directories names may not contain periods.")
             return False
         # priv check here
         return self.net.rename_dir(dir_id, new_dir_name)
 
     
     def rm_dir(self, dir_id, recursive=False):
-        # I was drunk when I wrote this this please review with great care
         # Recursive potion is UNTESTED
         # check priv
         # existence check
@@ -425,6 +434,9 @@ class Terminal:
     def create_note(self, note_name): 
         """ Create a new note with the specified id and edit. """
         if (not self.is_connected()) or (not self.is_logged_in()):
+            return False
+        elif '.' in note_name:
+            print("[!] Notes names may not contain periods.")
             return False
         # priv check here
         elif (note_name in self.pwd['notes']) or (note_name in self.pwd['subdirs']):
@@ -458,6 +470,23 @@ class Terminal:
         else:
             print(f"[!] Could not get note {note_name} from server.")
             return None 
+
+    def download(self, note_name):
+        """ Download and decrypt a local copy of a note. """
+        if (not self.is_connected()) or (not self.is_logged_in()):
+            return False 
+        #check priv
+        elif not note_name in self.pwd['notes']:
+            print(f"[*] No note of this name exist at current location.")
+            return False 
+        note_path, _ = self.get_note(self.pwd['notes'][note_name])
+        if note_path:
+            os.system(f'cp {note_path} ./{note_name}.txt')
+            return True
+        else:
+            print(f"[!] Could not get note {note_name} from server.")
+            return False
+
     
     def edit_note(self, note_name):
         """ Read a file with read() and then send any updates back to the server. """
@@ -475,12 +504,14 @@ class Terminal:
             print(f"[*] Note '{note_name}' could not be updated.")
             return False 
 
-    # save this till later, not very important 
-    def rename_note(self, note_id, new_note_name):
+    def rename_note(self, note_name, note_id, new_note_name):
         """ Change the name of a note stored on the server. """
         if (not self.is_connected()) or (not self.is_logged_in()):
             return False
-        pass
+        elif '.' in note_name:
+            print("[!] Notes names may not contain periods.")
+            return False
+        return self.net.rename_note(note_id, new_note_name)
 
     def rm_note(self, note_id):
         """ Delete a specified note on the server. """

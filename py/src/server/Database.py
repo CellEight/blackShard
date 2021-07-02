@@ -76,6 +76,19 @@ class Database():
         except Exception as e:
             print(e)
             return False
+    
+    def rename_note(self, note_id, new_note_name):
+        """ Instruct the database to change the note_name field of a note. """
+        try:
+            note = self.get_note(note_id)
+            result_1 = self.notes.update_one({'_id':note_id},{'$set':{'note_name':new_note_name}})
+            result_2 = self.dirs.update_one({'_id':note['dir_id']},{'$unset':{'notes.'+note['note_name']:''}})
+            result_2 = self.dirs.update_one({'_id':note['dir_id']},{'$set':{'notes.'+new_note_name:str(note['_id'])}})
+            return True
+        except Exception as e:
+            print(e)
+            print(f"[!] Failed to rename note {note_id}. The database may have been corrupted.")
+            return False
 
     def rm_note(self, note_id):
         """ Delete the specified note form database """
@@ -127,6 +140,21 @@ class Database():
         else:
             print("[!] Oh dear! You don't seem to have a root directory. Did you set up the Database?")
             return None
+    
+    def rename_dir(self, dir_id, new_dir_name):
+        """ Instruct the database to change the dir_name field of a directory. """
+        try:
+            _dir = self.get_dir(dir_id)
+            parent_id = ObjectId(_dir['parent_id'])
+            result_1 = self.dirs.update_one({'_id':dir_id},{'$set':{'dir_name':new_dir_name}})
+            result_2 = self.dirs.update_one({'_id':parent_id},{'$unset':{'subdirs.'+_dir['dir_name']:''}})
+            result_2 = self.dirs.update_one({'_id':parent_id},{'$set':{'subdirs.'+new_dir_name:str(_dir['_id'])}})
+            return True
+        except Exception as e:
+            print(e)
+            print("[!] Failed to rename directory {dir_id}. The database may have been corrupted.")
+            return False
+
 
     def rm_dir(self, dir_id):
         try:
