@@ -162,7 +162,7 @@ class Session():
             return True
         # verify privs
         # verify that file/folder not already present
-        if self.db.mkdir(dir_name, pwd_id, self.user['_id']):
+        if self.db.mkdir(dir_name, pwd_id, self.user['username']):
             self.connection.send_response(True)
             print(f"[*] Created new directory {dir_name} in {pwd_id}.")
             return True
@@ -307,8 +307,6 @@ class Session():
             print(f"[!] Could not rename note with id {note_id} to {new_note_name}")
             self.connection.send_response(False)
             return True
-
-
 
     def rm_note(self, note_id):
         """ Delete the specified note. """

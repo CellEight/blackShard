@@ -107,9 +107,9 @@ class Database():
 
     # Directory Management Methods
     
-    def mkdir(self, dir_name, parent_id, user_id):
+    def mkdir(self, dir_name, parent_id, username):
         # should owners/users be lists or a dicts
-        new_dir = {"dir_name":dir_name,"parent_id":str(parent_id),"subdirs":{},"notes":{},"owners":[str(user_id)],"users":[]}
+        new_dir = {"dir_name":dir_name,"parent_id":str(parent_id),"subdirs":{},"notes":{},"owners":[username],"users":[]}
         try:
             new_dir_id = self.dirs.insert_one(new_dir).inserted_id
             self.dirs.update_one({'_id':parent_id}, {'$set':{'subdirs.'+dir_name:str(new_dir_id)}})

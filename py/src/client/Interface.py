@@ -270,7 +270,7 @@ class Terminal:
             return False
         if True: #self.net.check_privilages(None, 'g'):  This is hogwash and not how I intend to implement privileges
             if self.crypto.generate_keypair(self.net.server_ip, user):
-                public_key = self.crypto.current_keypair.publickey().exportKey().decode('ascii')
+                public_key = self.crypto.current_keypair.public_key().export_key().decode('ascii')
                 if self.net.register(user, public_key):
                     self.user = user
                     print(f"[*] Registration complete. Welcome to the server {user}.")
