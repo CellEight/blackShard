@@ -166,7 +166,7 @@ while db_name in client.list_database_names():
     db_name = "blackshard-" + secrets.token_hex(16)
 db = client.get_database(db_name)
 print('Creating admin user account...')
-admin = {"username":'admin', "public_key":keypair.public_key().export_key().decode('ascii')}
+admin = {"username":'admin', "public_key":keypair.publickey().export_key().decode('ascii')}
 result = db.users.insert_one(admin)
 print('Creating root directory...')
 root = {"dir_name":'/',"parent_id":None,"subdirs":{},"notes":{},"owners":['admin'],"users":[]}
