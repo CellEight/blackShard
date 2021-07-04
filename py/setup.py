@@ -166,7 +166,7 @@ while db_name in client.list_database_names():
     db_name = "blackshard-" + secrets.token_hex(16)
 db = client.get_database(db_name)
 print('Creating admin user account...')
-admin = {"username":'admin', "public_key":keypair.publickey().export_key().decode('ascii')}
+admin = {"username":'admin', "public_key":keypair.publickey().exportkey().decode('ascii')}
 result = db.users.insert_one(admin)
 print('Creating root directory...')
 root = {"dir_name":'/',"parent_id":None,"subdirs":{},"notes":{},"owners":['admin'],"users":[]}
@@ -198,7 +198,7 @@ if key_id in key_db:
             print('Deleting created database {db_name}.')
             client.drop_database(db_name)
             exit(1)
-key_db[key_id] = keypair.export_key().decode('ascii')
+key_db[key_id] = keypair.exportkey().decode('ascii')
 with open(expanduser("~/.config/blackshard/key_db.pkl"),'wb') as key_db_fd:
     pickle.dump(key_db,key_db_fd)
 # Ask for any config options from the user
