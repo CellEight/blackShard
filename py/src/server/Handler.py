@@ -24,7 +24,7 @@ class Handler():
         # This is not an optimal solution as issues could arise from multiple clients
         # attempting simultaneous connection. Could it be handled by altering client code
         # so that it reattempts connection until successful?
-        net = Network(self.config,port=random.randint(1000,10000)) # random port cludge temporary
+        net = Network(self.config) # random port cludge temporary
         while True:
             connection = net.listen_for_client()
             if connection:

@@ -3,7 +3,8 @@ from Config import Config
 from Database import Database
 
 def main():
-    handler = Handler(Config(), Database())
+    config = Config()
+    handler = Handler(config, Database(config))
     while True:
         if handler.wait_for_client():
             print("[*] Client Connected.")

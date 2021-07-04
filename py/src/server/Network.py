@@ -5,8 +5,8 @@ from Connection import Connection
 class Network:
     def __init__(self, config, server_ip = "127.0.0.1", port = 54321, cert="../../certs/test_key_cert.pem"):
         self.config = config
-        self.server_ip = server_ip 
-        self.port = port
+        self.server_ip = self.config.server_ip 
+        self.port = self.config.server_port
         # generate context
         self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.ssl_context.load_cert_chain(certfile=cert)

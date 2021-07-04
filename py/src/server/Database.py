@@ -7,12 +7,16 @@ from bson import ObjectId
 # Less urgent: Add some docstrings
 
 class Database():
-    def __init__(self, ip="127.0.0.1", port=27017):
-        self.connect_to_db(ip, port)
+    def __init__(self, config):
+        self.config = config
+        self.connect_to_db()
 
-    def connect_to_db(self, ip, port):
-        self.client = MongoClient(ip, port)
-        self.db = self.client.blackShard
+    def connect_to_db(self):
+        if self.config.db_user:
+            self.client = MongoClient(f"mongodb://{self.config.db_user}:{self.config.db_password}@{self.configdb_ip}:{self.config.db_port}/?authSource=admin")
+        else:
+            self.client = MongoClient(self.config.db_ip, self.config.db_port)
+        self.db = self.client.get_database(self.config.db_name)
         self.users = self.db.users
         self.dirs = self.db.dirs
         self.notes = self.db.notes

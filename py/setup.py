@@ -21,16 +21,27 @@
 #    - Local key dict in ./.config/blackShard
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
-from os.path import isfile, expanduser
-import secret 
+from os import mkdir
+from os.path import isfile, isdir, expanduser
+import secrets
 import pickle
 import pymongo
-
+import yaml
+import re
+# a couple of useful functions...
 def choice(question, choices):
     selection = None 
     while selection not in choices:
         selection = input(f"[?] {question} [{','.join(choices)}]: ").lower()
     return selection
+
+def is_valid_ip(addr):
+    """ Check using a regex that the supplied string is a valid ip address """
+    ip_exp = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    if re.match(ip_exp,addr):
+        return True
+    else:
+        return False
 
 # Print Vanity Header
 buff='    __    __           __   _____ __                   __\n'
@@ -110,9 +121,9 @@ print('------------------------->Database Configuration<------------------------
 print('-------------------------------------------------------------------------\n')
 # IP
 db_ip= ''
-while not is_valid_ip(server_ip):
-    server_ip = input('> Please Enter IP address mongodb server is listening on: ')
-    if not is_valid_ip(server_ip):
+while not is_valid_ip(db_ip):
+    db_ip = input('> Please Enter IP address mongodb server is listening on: ')
+    if not is_valid_ip(db_ip):
         print('[!] Not a valid IPV4 address, try again.')
 # Port
 db_port = 0
@@ -129,13 +140,17 @@ while not db_port in range(1,65536):
         print('[!] Not a valid port (must be a number between 1 and 65535), try again.')
 # Get mongodb creds from user
 db_user = input("> Please enter username of mongodb admin: [Leave Blank if no authentication] ")
+db_password = ""
 if db_user:
     db_password = input("> Please enter password: ") 
 # Attempt to connect to server and error out here if a connection cannot be established
 print('Attempting to connect to Database')
-client = pymongo.MongoClient(f"mongodb://{db_user}:{db_password}@{db_ip}/?authSource=admin")
+if db_user:
+    client = pymongo.MongoClient(f"mongodb://{db_user}:{db_password}@{db_ip}:{db_port}/?authSource=admin")
+else:
+    client = pymongo.MongoClient(f"mongodb://{db_ip}:{db_port}/?authSource=admin")
 try:
-    client.server_inf()
+    client.server_info()
 except pymongo.errors.ServerSelectionTimeoutError as e:
     print('[!] Could not connect to mongodb.')
     exit(1)
@@ -151,7 +166,7 @@ while db_name in client.list_database_names():
     db_name = "blackshard-" + secrets.token_hex(16)
 db = client.get_database(db_name)
 print('Creating admin user account...')
-admin = {"username":'admin', "public_key":keypair.public_key.export_key().decode('ascii')}
+admin = {"username":'admin', "public_key":keypair.public_key().export_key().decode('ascii')}
 result = db.users.insert_one(admin)
 print('Creating root directory...')
 root = {"dir_name":'/',"parent_id":None,"subdirs":{},"notes":{},"owners":['admin'],"users":[]}
@@ -164,12 +179,16 @@ print('-------------------------->Local Configuration<--------------------------
 print('-------------------------------------------------------------------------\n')
 # Attempt to create or add to key_db
 print('Checking for pre-existing key_db.pkl file in ~/.config/blackshard')
-if isfile('~/config/blackshard/key_db.pkl'):
+if isfile('~/.config/blackshard/key_db.pkl'):
     print('Key-chain found! Using that one.')
-    with open(expanduser("~/config/blackshard"),'rb') as key_db_fd:
+    with open(expanduser("~/.config/blackshard"),'rb') as key_db_fd:
         key_db = pickle.load(key_db_fd)
 else:
     print('No key-chain found. Creating one now...')
+    if not isdir(expanduser("~/.config")):
+        mkdir(expanduser("~/.config"))
+    if not isdir(expanduser("~/.config/blackshard")):
+        mkdir(expanduser("~/.config/blackshard"))
     key_db = {}
 key_id = f'{server_ip}-admin'
 if key_id in key_db:
@@ -180,14 +199,15 @@ if key_id in key_db:
             client.drop_database(db_name)
             exit(1)
 key_db[key_id] = keypair.export_key().decode('ascii')
-with open(expanduser("~/config/blackshard"),'wb') as key_db_fd:
-    key_db = pickle.dump(key_db_fd)
+with open(expanduser("~/.config/blackshard/key_db.pkl"),'wb') as key_db_fd:
+    pickle.dump(key_db,key_db_fd)
 # Ask for any config options from the user
 print('Key-chain saved.')
 print('Generating config file...')
-with open(expanduser("~/config/blackshard"),'w') as config_fd:
+with open(expanduser("~/.config/blackshard/bs_server_conf.yaml"),'w') as config_fd:
     # author config
     config = {'server_ip':server_ip,'server_port':server_port,
-            'db_ip':db_ip,'db_port':db_port,'header':f'Welcome to {db_name}!'}
-    config_fd.write(yaml.dump(config))
+              'db_ip':db_ip,'db_port':db_port,'db_user':db_user,
+              'db_password':db_password,'db_name':db_name,'header':f'Welcome to {db_name}!'}
+    yaml.dump(config, config_fd)
 print('All done! Just Fire up the server and you\'re good to go...')

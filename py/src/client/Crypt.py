@@ -5,12 +5,12 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto import Random
-from os.path import isfile
+from os.path import isfile, expanduser
 from Util import choice
 
 class Crypt():
     """ Crypt handles all application layer encryption for blackShard. """
-    def __init__(self, password, key_db_location="./key_db.pkl"):
+    def __init__(self, password, key_db_location=expanduser("~/.config/blackshard/key_db.pkl")):
         self.current_keypair = None
         self.key_len = 4096
         self.key_db_location = key_db_location 
