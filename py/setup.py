@@ -1,4 +1,4 @@
- Inputs
+# Inputs
 #    - Server Ip
 #    - Server Port 
 #    - Mongodb Ip
@@ -25,6 +25,13 @@ from os.path import isfile, expanduser
 import secret 
 import pickle
 import pymongo
+
+def choice(question, choices):
+    selection = None 
+    while selection not in choices:
+        selection = input(f"[?] {question} [{','.join(choices)}]: ").lower()
+    return selection
+
 # Print Vanity Header
 buff='    __    __           __   _____ __                   __\n'
 buff+='   / /_  / /___ ______/ /__/ ___// /_  ____ __________/ /\n'
@@ -120,9 +127,13 @@ while not db_port in range(1,65536):
             print('[!] That is not a number.')
     if not db_port in range(65536) and db_port:
         print('[!] Not a valid port (must be a number between 1 and 65535), try again.')
+# Get mongodb creds from user
+db_user = input("> Please enter username of mongodb admin: [Leave Blank if no authentication] ")
+if db_user:
+    db_password = input("> Please enter password: ") 
 # Attempt to connect to server and error out here if a connection cannot be established
 print('Attempting to connect to Database')
-client = pymongo.MongoClient(db_ip,db_ip)
+client = pymongo.MongoClient(f"mongodb://{db_user}:{db_password}@{db_ip}/?authSource=admin")
 try:
     client.server_inf()
 except pymongo.errors.ServerSelectionTimeoutError as e:
