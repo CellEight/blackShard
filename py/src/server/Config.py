@@ -13,7 +13,7 @@ class Config():
     def load_config(self):
         """ Open configuration file, parse and set variables """
         with open(self.config_loc, 'r') as config_fd:
-            config = yaml.load(config_fd.read())
+            config = yaml.safe_load(config_fd.read())
         self.server_ip = config['server_ip']
         self.server_port = config['server_port']
         self.db_ip = config['db_ip']
