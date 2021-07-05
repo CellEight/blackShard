@@ -98,7 +98,9 @@ print('-------------------------------------------------------------------------
 # IP
 server_ip = ''
 while not is_valid_ip(server_ip):
-    server_ip = input('> Please Enter IP address for server to listen on: ')
+    server_ip = input('> Please Enter IP address for server to listen on: [Defualt: 127.0.0.1] ')
+    if not db_ip:
+        dp_ip = '127.0.0.1'
     if not is_valid_ip(server_ip):
         print('[!] Not a valid IPV4 address, try again.')
 # Port
@@ -122,7 +124,9 @@ print('-------------------------------------------------------------------------
 # IP
 db_ip= ''
 while not is_valid_ip(db_ip):
-    db_ip = input('> Please Enter IP address mongodb server is listening on: ')
+    db_ip = input('> Please Enter IP address mongodb server is listening on: [Default: 127.0.0.1] ')
+    if not db_ip:
+        dp_ip = '127.0.0.1'
     if not is_valid_ip(db_ip):
         print('[!] Not a valid IPV4 address, try again.')
 # Port
